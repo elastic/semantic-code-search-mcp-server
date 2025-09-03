@@ -4,7 +4,7 @@ This project includes a Model Context Protocol (MCP) server that exposes the ind
 
 ## Prerequisites
 
-You must index your code base with the Semantic Code Search Indexer found here: https://github.com/simianhacker/semantic-code-search-indexer
+You must index your code base with the Semantic Code Search Indexer found here: https://github.com/elastic/semantic-code-search-indexer
 
 ## Running with Docker
 
