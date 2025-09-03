@@ -18,6 +18,21 @@ docker run -p 3000:3000 \
 
 Replace `<your_elasticsearch_endpoint>` with the actual endpoint of your Elasticsearch instance.
 
+### Connecting a Coding Agent
+
+Once the server is running, you can connect your coding agent to it. For example, to connect the Gemini CLI, you would add the following to your `~/.gemini/settings.json` file:
+
+```json
+{
+  "mcpServers": {
+    "Semantic Code Search": {
+      "trust": true,
+      "httpUrl": "http://localhost:3000/mcp/",
+    }
+  }
+}
+```
+
 ## Setup and Installation
 
 ### 1. Prerequisites
