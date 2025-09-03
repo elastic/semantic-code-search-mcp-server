@@ -1,0 +1,54 @@
+{
+  "name": "semantic-code-search-mcp-server",
+  "version": "1.0.0",
+  "bin": {
+    "mcp-server": "dist/src/mcp_server/bin.js"
+  },
+  "main": "dist/src/mcp_server/bin.js",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc",
+    "postbuild": "mkdir -p dist/libs/es-query/src/kuery/grammar && cp libs/es-query/src/kuery/grammar/grammar.js dist/libs/es-query/src/kuery/grammar/grammar.js && mkdir -p dist/src/mcp_server/prompts && cp src/mcp_server/prompts/*.md dist/src/mcp_server/prompts/ && mkdir -p dist/src/mcp_server/tools && cp src/mcp_server/tools/*.md dist/src/mcp_server/tools/ && chmod +x dist/src/mcp_server/bin.js",
+    "build:kql": "npx peggy -o libs/es-query/src/kuery/grammar/grammar.js libs/es-query/src/kuery/grammar/grammar.peggy",
+    "lint": "eslint . --ext .ts",
+    "test": "jest",
+    "prepare": "npm run build",
+    "mcp-server": "ts-node src/mcp_server/bin.ts",
+    "mcp-server:http": "ts-node src/mcp_server/bin.ts http"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "SSPL-1.0",
+  "dependencies": {
+    "@elastic/elasticsearch": "^9.1.1",
+    "@modelcontextprotocol/sdk": "^1.17.4",
+    "@types/lodash": "^4.17.20",
+    "@types/moment": "^2.11.29",
+    "@types/moment-timezone": "^0.5.13",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "glob": "^11.0.3",
+    "ignore": "^7.0.5",
+    "lodash": "^4.17.21",
+    "moment": "^2.30.1",
+    "moment-timezone": "^0.6.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/glob": "^8.1.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.39.1",
+    "@typescript-eslint/parser": "^8.39.1",
+    "dotenv-cli": "^10.0.0",
+    "eslint": "^9.33.0",
+    "husky": "^9.1.7",
+    "jest": "^30.1.1",
+    "peggy": "^5.0.6",
+    "prettier": "^3.6.2",
+    "ts-jest": "^29.4.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.40.0"
+  }
+}

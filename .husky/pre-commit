@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "Building, running tests, and linting before commit..."
+npm run build && npm run test && npm run lint

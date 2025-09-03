@@ -1,0 +1,5 @@
+node_modules
+dist
+.env
+commit_message.txt
+COMMIT_MESSAGE.tmp
