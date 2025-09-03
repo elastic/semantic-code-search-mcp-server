@@ -6,6 +6,18 @@ This project includes a Model Context Protocol (MCP) server that exposes the ind
 
 You must index your code base with the Semantic Code Search Indexer found here: https://github.com/simianhacker/semantic-code-search-indexer
 
+## Running with Docker
+
+The easiest way to run the MCP server is with Docker. The server is available on Docker Hub as `simianhacker/semantic-code-search-mcp-server`.
+
+```bash
+docker run -p 3000:3000 \
+  -e ELASTICSEARCH_ENDPOINT=<your_elasticsearch_endpoint> \
+  simianhacker/semantic-code-search-mcp-server
+```
+
+Replace `<your_elasticsearch_endpoint>` with the actual endpoint of your Elasticsearch instance.
+
 ## Setup and Installation
 
 ### 1. Prerequisites
