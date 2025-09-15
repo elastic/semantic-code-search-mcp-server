@@ -4,7 +4,7 @@ The tool returns a structured representation of the file, broken down into an ar
 
 ## Parameters
 
-- `filePaths` (`string[]`): An array of one or more absolute file paths to read.
+- `filePaths` (`string[]`): An array of one or more relative file paths to read.
 
 ## Returns
 
@@ -19,7 +19,7 @@ A map where each key is a file path and the value is an array of chunk objects. 
 
 ```json
 {
-  "/path/to/your/file.js": [
+  "path/to/your/file.js": [
     {
       "content": "import { useState } from 'react';",
       "startLine": 1,
