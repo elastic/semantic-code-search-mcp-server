@@ -10,7 +10,7 @@ An AI coding agent can use this tool to get a focused list of symbols to documen
 
 ## Parameters
 
-- `filePath` (`string`): The absolute path to the file to analyze.
+- `filePath` (`string`): The relative path to the project of the file to analyze.
 
 ## Returns
 
