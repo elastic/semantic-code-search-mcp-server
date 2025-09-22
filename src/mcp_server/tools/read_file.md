@@ -4,7 +4,7 @@ The tool returns a structured representation of the file, broken down into an ar
 
 ## Parameters
 
-- `filePaths` (`string[]`): An array of one or more relative file paths to read.
+- `filePaths` (`string[]`): An array of one or more relative file paths to the project to read.
 
 ## Returns
 

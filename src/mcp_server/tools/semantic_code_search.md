@@ -17,7 +17,14 @@ You can use the following fields in your KQL queries:
 - **type** (keyword): The type of the code chunk (e.g., 'code', 'doc').
 - **language** (keyword): The programming language of the code (e.g., 'markdown', 'typescript', 'javascript').
 - **kind** (keyword):  The specific kind of the code symbol (from LSP) (e.g., 'call_expression', 'import_statement', 'comment', 'function_declaration', 'type_alias_declaration', 'interface_declaration', 'lexical_declaration').
-- **imports** (keyword): A list of imported modules or libraries.
+- **imports** (nested): A list of imported modules or libraries.
+  - **imports.path** (keyword): The path of the file or module
+  - **imports.type** (keyword): The type of module (`file` or `module`)
+  - **imports.symbols** (keyword[]): An array of imported symbols
+- **symbols** (nested): A list of they symbols in a chunk or file.
+  - **symbols.name** (keyword): The name of the symbol
+  - **symbols.kind** (keyword): The type of symbol (`variable.name`, `method.call`, `function.definition`, etc)
+  - **symbols.line** (long): The line number of the symbol
 - **containerPath** (text):  The path of the containing symbol (e.g., class name for a method).
 - **filePath** (keyword): The absolute path to the source file.
 - **startLine** (integer): The starting line number of the chunk in the file.
@@ -26,7 +33,7 @@ You can use the following fields in your KQL queries:
 - **updated_at** (date): The timestamp when the document was last updated.
 
 ### IMPORTANT QUERY TIPS
-- CRITICAL: ALWAYS use semantic search terms. If the user asks "Show me how to add an SLI to the SLO Plugin", use "add SLI to SLO plugin" for the query.
+- CRITICAL: ALWAYS use semantic search terms. For example, if the user asks "Show me how to add an SLI to the SLO Plugin", use "add SLI to SLO plugin" for the query.
 - CRITICAL: ALWAYS base your queries on the user's prompt, you will have a higher success rate by doing this.
 - CRITICAL: ALWAYS follow the "chain of investigation" method
 - CRITICAL: NEVER try to answer questions without using semantic search first.
@@ -64,7 +71,6 @@ To get the second page of 50 results for files importing the React library, you 
 
   {
     "query": "state management",
-    "kql": "imports: *from 'react'*",
     "size": 50,
     "page": 2
   }
