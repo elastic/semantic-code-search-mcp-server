@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { fromKueryExpression, toElasticsearchQuery } from '../../../libs/es-query';
-import { aggregateBySymbols } from '../../utils/elasticsearch';
+import { aggregateBySymbolsAndImports } from '../../utils/elasticsearch';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 
 /**
@@ -16,7 +16,7 @@ export type ListSymbolsByQueryParams = z.infer<typeof listSymbolsByQuerySchema>;
 /**
  * Lists symbols that match a given KQL query.
  *
- * This function uses the `aggregateBySymbols` function to perform the
+ * This function uses the `aggregateBySymbolsAndImports` function to perform the
  * aggregation.
  *
  * @param {ListSymbolsByQueryParams} params - The parameters for the function.
@@ -29,7 +29,7 @@ export async function listSymbolsByQuery(params: ListSymbolsByQueryParams): Prom
   const ast = fromKueryExpression(kql);
   const dsl = toElasticsearchQuery(ast);
 
-  const results = await aggregateBySymbols(dsl);
+  const results = await aggregateBySymbolsAndImports(dsl);
 
   return {
     content: [{ type: 'text', text: JSON.stringify(results) }]

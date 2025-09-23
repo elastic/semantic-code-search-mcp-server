@@ -107,16 +107,18 @@ export async function searchCodeChunks(query: string): Promise<SearchResult[]> {
   }));
 }
 
-/**
- * Aggregates symbols by file path.
- *
- * This function is used by the `symbol_analysis` tool to find all the symbols
- * in a set of files that match a given query.
- *
- * @param query The Elasticsearch query to use for the search.
- * @returns A promise that resolves to a record of file paths to symbol info.
- */
-interface FileAggregation {
+export interface ImportInfo {
+  path: string;
+  type: 'module' | 'file';
+  symbols?: string[];
+}
+
+export interface FileSymbolsAndImports {
+  symbols: SymbolInfo[];
+  imports: ImportInfo[];
+}
+
+interface FileAggregationWithImports {
   files: {
     buckets: {
       key: string;
@@ -137,21 +139,31 @@ interface FileAggregation {
           }[];
         };
       };
+      imports: {
+        paths: {
+          buckets: {
+            key: string;
+            type: {
+              buckets: {
+                key: 'module' | 'file';
+              }[];
+            };
+            symbols: {
+              buckets: {
+                key: string;
+              }[];
+            };
+          }[];
+        };
+      };
     }[];
   };
 }
 
-/**
- * Aggregates symbols by file path.
- *
- * This function is used by the `symbol_analysis` tool to find all the symbols
- * in a set of files that match a given query.
- *
- * @param query The Elasticsearch query to use for the search.
- * @returns A promise that resolves to a record of file paths to symbol info.
- */
-export async function aggregateBySymbols(query: QueryDslQueryContainer): Promise<Record<string, SymbolInfo[]>> {
-  const response = await client.search<unknown, FileAggregation>({
+export async function aggregateBySymbolsAndImports(
+  query: QueryDslQueryContainer
+): Promise<Record<string, FileSymbolsAndImports>> {
+  const response = await client.search<unknown, FileAggregationWithImports>({
     index: indexName,
     query,
     aggs: {
@@ -188,13 +200,40 @@ export async function aggregateBySymbols(query: QueryDslQueryContainer): Promise
               },
             },
           },
+          imports: {
+            nested: {
+              path: 'imports',
+            },
+            aggs: {
+              paths: {
+                terms: {
+                  field: 'imports.path',
+                  size: 1000,
+                },
+                aggs: {
+                  type: {
+                    terms: {
+                      field: 'imports.type',
+                      size: 1,
+                    },
+                  },
+                  symbols: {
+                    terms: {
+                      field: 'imports.symbols',
+                      size: 100,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     },
     size: 0,
   });
 
-  const results: Record<string, SymbolInfo[]> = {};
+  const results: Record<string, FileSymbolsAndImports> = {};
   if (response.aggregations) {
     const files = response.aggregations;
     for (const bucket of files.files.buckets) {
@@ -204,7 +243,12 @@ export async function aggregateBySymbols(query: QueryDslQueryContainer): Promise
         kind: b.kind.buckets[0].key,
         line: b.line.buckets[0].key,
       }));
-      results[filePath] = symbols;
+      const imports: ImportInfo[] = bucket.imports.paths.buckets.map(b => ({
+        path: b.key,
+        type: b.type.buckets[0].key,
+        symbols: b.symbols.buckets.map(s => s.key),
+      }));
+      results[filePath] = { symbols, imports };
     }
   }
 

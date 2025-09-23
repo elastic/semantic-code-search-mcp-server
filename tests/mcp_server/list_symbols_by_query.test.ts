@@ -1,9 +1,9 @@
 import { listSymbolsByQuery } from '../../src/mcp_server/tools/list_symbols_by_query';
-import { aggregateBySymbols } from '../../src/utils/elasticsearch';
+import { aggregateBySymbolsAndImports } from '../../src/utils/elasticsearch';
 
 jest.mock('../../src/utils/elasticsearch', () => ({
   ...jest.requireActual('../../src/utils/elasticsearch'),
-  aggregateBySymbols: jest.fn(),
+  aggregateBySymbolsAndImports: jest.fn(),
 }));
 
 describe('list_symbols_by_query', () => {
@@ -11,12 +11,30 @@ describe('list_symbols_by_query', () => {
     jest.clearAllMocks();
   });
 
-  it('should call aggregateBySymbols with the correct DSL query', async () => {
-    (aggregateBySymbols as jest.Mock).mockResolvedValue({});
+  it('should call aggregateBySymbolsAndImports with the correct DSL query and return the result', async () => {
+    const mockAggregations = {
+      'src/example.ts': {
+        symbols: [
+          {
+            name: 'exampleFunction',
+            kind: 'function',
+            line: 42,
+          },
+        ],
+        imports: [
+          {
+            path: './utils',
+            type: 'module',
+            symbols: ['helper', 'utils'],
+          },
+        ],
+      },
+    };
+    (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
 
-    await listSymbolsByQuery({ kql: 'language: typescript' });
+    const result = await listSymbolsByQuery({ kql: 'language: typescript' });
 
-    expect(aggregateBySymbols).toHaveBeenCalledWith({
+    expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith({
       bool: {
         minimum_should_match: 1,
         should: [
@@ -28,5 +46,7 @@ describe('list_symbols_by_query', () => {
         ],
       },
     });
+
+    expect(JSON.parse(result.content[0].text as string)).toEqual(mockAggregations);
   });
 });
