@@ -10,17 +10,47 @@ You must index your code base with the Semantic Code Search Indexer found here: 
 
 The easiest way to run the MCP server is with Docker. The server is available on Docker Hub as `simianhacker/semantic-code-search-mcp-server`.
 
+### HTTP Mode
+
+This mode is useful for running the server in a containerized environment where it needs to be accessible over the network.
+
 ```bash
-docker run -p 3000:3000 \
+docker run --rm -p 3000:3000 \
   -e ELASTICSEARCH_ENDPOINT=<your_elasticsearch_endpoint> \
   simianhacker/semantic-code-search-mcp-server
 ```
 
 Replace `<your_elasticsearch_endpoint>` with the actual endpoint of your Elasticsearch instance.
 
+### STDIO Mode
+
+This mode is useful for running the server as a local process that an agent can communicate with over `stdin` and `stdout`.
+
+**With Elasticsearch Endpoint:**
+```bash
+docker run -i --rm \
+  -e ELASTICSEARCH_ENDPOINT=<your_elasticsearch_endpoint> \
+  simianhacker/semantic-code-search-mcp-server \
+  node dist/src/mcp_server/bin.js stdio
+```
+
+**With Elastic Cloud ID:**
+```bash
+docker run -i --rm \
+  -e ELASTICSEARCH_CLOUD_ID=<your_cloud_id> \
+  -e ELASTICSEARCH_API_KEY=<your_api_key> \
+  simianhacker/semantic-code-search-mcp-server \
+  node dist/src/mcp_server/bin.js stdio
+```
+
+The `-i` flag is important as it tells Docker to run the container in interactive mode, which is necessary for the server to receive input from `stdin`.
+
 ### Connecting a Coding Agent
 
-Once the server is running, you can connect your coding agent to it. For example, to connect the Gemini CLI, you would add the following to your `~/.gemini/settings.json` file:
+You can connect a coding agent to the server in either HTTP or STDIO mode.
+
+**HTTP Mode:**
+For agents that connect over HTTP, like the Gemini CLI, you can add the following to your `~/.gemini/settings.json` file:
 
 ```json
 {
@@ -32,6 +62,30 @@ Once the server is running, you can connect your coding agent to it. For example
   }
 }
 ```
+
+**STDIO Mode:**
+For agents that connect over STDIO, you need to configure them to run the Docker command directly. Here's an example for the Gemini CLI in your `~/.gemini/settings.json` file:
+
+```json
+{
+  "mcpServers": {
+    "SemanticCodeSearch": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e", "ELASTICSEARCH_CLOUD_ID=<your_cloud_id>",
+        "-e", "ELASTICSEARCH_API_KEY=<your_api_key>",
+        "-e", "ELASTICSEARCH_INDEX=<your_index>",
+        "simianhacker/semantic-code-search-mcp-server",
+        "node", "dist/src/mcp_server/bin.js", "stdio"
+      ]
+    }
+  }
+}
+```
+Remember to replace the placeholder values for your Cloud ID, API key, and index name.
 
 ## Setup and Installation
 
