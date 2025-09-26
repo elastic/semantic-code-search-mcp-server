@@ -10,6 +10,12 @@ You must index your code base with the Semantic Code Search Indexer found here: 
 
 The easiest way to run the MCP server is with Docker. The server is available on Docker Hub as `simianhacker/semantic-code-search-mcp-server`.
 
+To ensure you have the latest version of the image, run the following command before running the server:
+
+```bash
+docker pull simianhacker/semantic-code-search-mcp-server
+```
+
 ### HTTP Mode
 
 This mode is useful for running the server in a containerized environment where it needs to be accessible over the network.
