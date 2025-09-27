@@ -14,20 +14,22 @@ describe('list_symbols_by_query', () => {
   it('should call aggregateBySymbolsAndImports with the correct DSL query and return the result', async () => {
     const mockAggregations = {
       'src/example.ts': {
-        symbols: [
-          {
-            name: 'exampleFunction',
-            kind: 'function',
-            line: 42,
-          },
-        ],
-        imports: [
-          {
-            path: './utils',
-            type: 'module',
-            symbols: ['helper', 'utils'],
-          },
-        ],
+        symbols: {
+          function: [
+            {
+              name: 'exampleFunction',
+              line: 42,
+            },
+          ],
+        },
+        imports: {
+          module: [
+            {
+              path: './utils',
+              symbols: ['helper', 'utils'],
+            },
+          ],
+        },
       },
     };
     (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);

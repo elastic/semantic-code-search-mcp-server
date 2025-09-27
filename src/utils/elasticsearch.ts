@@ -53,7 +53,6 @@ const indexName = elasticsearchConfig.index;
 
 export interface SymbolInfo {
   name: string;
-  kind: string;
   line: number;
 }
 
@@ -109,13 +108,12 @@ export async function searchCodeChunks(query: string): Promise<SearchResult[]> {
 
 export interface ImportInfo {
   path: string;
-  type: 'module' | 'file';
   symbols?: string[];
 }
 
 export interface FileSymbolsAndImports {
-  symbols: SymbolInfo[];
-  imports: ImportInfo[];
+  symbols: Record<string, SymbolInfo[]>;
+  imports: Record<string, ImportInfo[]>;
 }
 
 interface FileAggregationWithImports {
@@ -238,16 +236,33 @@ export async function aggregateBySymbolsAndImports(
     const files = response.aggregations;
     for (const bucket of files.files.buckets) {
       const filePath = bucket.key;
-      const symbols: SymbolInfo[] = bucket.symbols.names.buckets.map(b => ({
-        name: b.key,
-        kind: b.kind.buckets[0].key,
-        line: b.line.buckets[0].key,
-      }));
-      const imports: ImportInfo[] = bucket.imports.paths.buckets.map(b => ({
-        path: b.key,
-        type: b.type.buckets[0].key,
-        symbols: b.symbols.buckets.map(s => s.key),
-      }));
+      const symbols = bucket.symbols.names.buckets
+        .map(b => ({
+          name: b.key,
+          kind: b.kind.buckets[0].key,
+          line: b.line.buckets[0].key,
+        }))
+        .reduce((acc, { kind, ...rest }) => {
+          if (!acc[kind]) {
+            acc[kind] = [];
+          }
+          acc[kind].push(rest);
+          return acc;
+        }, {} as Record<string, SymbolInfo[]>);
+
+      const imports = bucket.imports.paths.buckets
+        .map(b => ({
+          path: b.key,
+          type: b.type.buckets[0].key,
+          symbols: b.symbols.buckets.map(s => s.key),
+        }))
+        .reduce((acc, { type, ...rest }) => {
+          if (!acc[type]) {
+            acc[type] = [];
+          }
+          acc[type].push(rest);
+          return acc;
+        }, {} as Record<string, ImportInfo[]>);
       results[filePath] = { symbols, imports };
     }
   }
