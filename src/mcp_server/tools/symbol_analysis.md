@@ -1,14 +1,23 @@
-The precision tool for the second step in a "chain of investigation." Use this *after* `semantic_code_search` has helped you identify a specific, concrete symbol (e.g., a class name, function name, or type alias).
+Precision tool for step 2 of "chain of investigation" - analyze specific symbols found via search.
 
-**Best for:**
-*   **Drilling Down:** Answering the question, "Now that I've found `IndicatorType`, where is it actually used and how is it connected to the rest of the system?"
-*   **Architectural Analysis:** The rich, categorized report helps you understand a symbol's role by showing you:
-    *   Its definition.
-    *   Where it is imported and used (call sites).
-    *   How it's used in tests.
-    *   Where it's referenced in documentation.
-*   **Impact Analysis:** Quickly see all the places that would be affected by a change to the symbol.
+## Use Cases
+- **Deep Dive**: "Where is `IndicatorType` used and how?"
+- **Architecture**: See definition, imports, call sites, tests, docs
+- **Impact**: Find all affected locations for changes
 
-**Workflow:**
-1.  Use `semantic_code_search` or `list_symbols_by_query` tools to discover key symbols (e.g., `indicatorTypesSchema`).
-2.  Feed that exact symbol name into `symbol_analysis` to get a comprehensive, cross-referenced report of all its connections.
+## Workflow
+1. Find symbols via `semantic_code_search` or `list_symbols_by_query`
+2. Pass exact symbol name to `symbol_analysis` for complete connections
+
+## Returns
+Comprehensive cross-referenced report showing:
+- Definition location
+- Import statements
+- Usage/call sites
+- Test references
+- Documentation mentions
+
+## Example
+```json
+{ "symbolName": "indicatorTypesSchema" }
+```

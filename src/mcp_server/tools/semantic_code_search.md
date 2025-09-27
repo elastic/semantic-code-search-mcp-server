@@ -1,76 +1,51 @@
-The primary tool for starting a "chain of investigation." Use this for broad, semantic exploration when you don't know the exact file or symbol names.
+Start your "chain of investigation" with broad semantic exploration.
 
-**Best for:**
-*   **Initial Discovery:** Answering questions like, "Where is the logic for SLO SLIs?" or "How are API keys handled?"
-*   **Finding Entry Points:** Use broad, conceptual queries (e.g., "SLI registration", "user authentication flow") to find the most relevant files and symbols.
-*   **Narrowing the Search:** Once you have initial results, you can refine your search with more specific terms (e.g., "IndicatorType enum") or KQL filters.
+## Use Cases
+- **Discovery**: "Where is SLO SLI logic?" / "How are API keys handled?"
+- **Entry Points**: Broad queries → relevant files → specific symbols
+- **Refinement**: Narrow with specific terms or KQL filters
 
-**Workflow:**
-1.  Start with a broad, semantic query to understand the landscape.
-2.  Analyze the results to identify key files, functions, classes, or types.
-3.  Once you have identified a specific, concrete symbol, **switch to `symbol_analysis`** for a precise analysis of its connections.
+## Workflow
+1. Broad semantic query → understand landscape
+2. Identify key files/symbols
+3. Switch to `symbol_analysis` for specific symbols
 
-Either a `query` for semantic search or a `kql` filter is required. If both are provided, they are combined with a must clause (AND operator) in Elasticsearch. You can control the number of results with `size` and paginate through them using `page`.
+## Parameters
+- `query`: Semantic search terms
+- `kql`: Filter expression (combined with AND if both provided)
+- `size`: Results per page
+- `page`: Pagination
 
-You can use the following fields in your KQL queries:
+## KQL Fields
+**Basic**: `type`, `language`, `kind`, `filePath`, `containerPath`, `startLine`, `endLine`
+**Imports**: `imports.path`, `imports.type`, `imports.symbols`
+**Symbols**: `symbols.name`, `symbols.kind`, `symbols.line`
+**Timestamps**: `created_at`, `updated_at`
 
-- **type** (keyword): The type of the code chunk (e.g., 'code', 'doc').
-- **language** (keyword): The programming language of the code (e.g., 'markdown', 'typescript', 'javascript').
-- **kind** (keyword):  The specific kind of the code symbol (from LSP) (e.g., 'call_expression', 'import_statement', 'comment', 'function_declaration', 'type_alias_declaration', 'interface_declaration', 'lexical_declaration').
-- **imports** (nested): A list of imported modules or libraries.
-  - **imports.path** (keyword): The path of the file or module
-  - **imports.type** (keyword): The type of module (`file` or `module`)
-  - **imports.symbols** (keyword[]): An array of imported symbols
-- **symbols** (nested): A list of they symbols in a chunk or file.
-  - **symbols.name** (keyword): The name of the symbol
-  - **symbols.kind** (keyword): The type of symbol (`variable.name`, `method.call`, `function.definition`, etc)
-  - **symbols.line** (long): The line number of the symbol
-- **containerPath** (text):  The path of the containing symbol (e.g., class name for a method).
-- **filePath** (keyword): The absolute path to the source file.
-- **startLine** (integer): The starting line number of the chunk in the file.
-- **endLine** (integer): The ending line number of the chunk in the file.
-- **created_at** (date): The timestamp when the document was created.
-- **updated_at** (date): The timestamp when the document was last updated.
+## Query Rules
+- Use semantic terms from user's actual question
+- Show search parameters: `query: "X"` and `kql: "Y"`
+- Wildcards: NO quotes for patterns, quotes for EXACT matches only
+- Use `content: "symbol-name"` for exact symbol matches
+- Check `get_distinct_values` for valid `kind` values
 
-### IMPORTANT QUERY TIPS
-- CRITICAL: ALWAYS use semantic search terms. For example, if the user asks "Show me how to add an SLI to the SLO Plugin", use "add SLI to SLO plugin" for the query.
-- CRITICAL: ALWAYS base your queries on the user's prompt, you will have a higher success rate by doing this.
-- CRITICAL: ALWAYS follow the "chain of investigation" method
-- CRITICAL: NEVER try to answer questions without using semantic search first.
-- CRITICAL: NEVER double quite a `kql` wildcard query. Double quotes are used for EXACT MATCHES
-- CRITICAL: ALWAYS show "I'm going to use `semantic_code_search` with the `query: \"<insert-semantic-search-here>\"` and `kql: \"<kql-query-here>\"` so the user can see what terms you're using to search
-- If you are unsure what explicit values to use for `kind` use the `get_distinct_values` to get a complete list of the keywords
-- If you are trying to match the exact name of a symbol, use the `content` field in a kql query like this: `content: "<symbol-name-here>"`
+## Examples
+```json
+// Semantic + KQL
+{ "query": "render a table", "kql": "kind: \"function_declaration\"" }
 
-### Example: Semantic Search with a KQL Filter
+// KQL only
+{ "kql": "language: \"typescript\" and kind: \"class_declaration\"", "size": 5 }
 
-To find all functions related to "rendering a table", you could use:
+// Wildcard search (no quotes on wildcard)
+{ "kql": "filePath: *src/utils*" }
 
+// Exact match (with quotes)
+{ "kql": "symbols.name: \"getUserData\"" }
 
-  {
-    "query": "render a table",
-    "kql": "kind: \"function_declaration\""
-  }
+// Combined wildcard and exact
+{ "kql": "filePath: *components* and kind: \"function_declaration\"" }
 
-
-### Example: KQL-Only Search
-
-To find all TypeScript classes, omitting the semantic query, you could use:
-
-
-  {
-    "kql": "language: \"typescript\" and kind: \"class_declaration\"",
-    "size": 5
-  }
-
-
-### Example: Paginated Search
-
-To get the second page of 50 results for files importing the React library, you could use:
-
-
-  {
-    "query": "state management",
-    "size": 50,
-    "page": 2
-  }
+// Pagination
+{ "query": "state management", "size": 50, "page": 2 }
+```
