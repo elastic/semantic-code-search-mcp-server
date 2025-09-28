@@ -12,6 +12,8 @@ import { listSymbolsByQuery, listSymbolsByQuerySchema } from './tools/list_symbo
 import { symbolAnalysis, symbolAnalysisSchema } from './tools/symbol_analysis';
 import { readFile, readFileSchema } from './tools/read_file';
 import { documentSymbols, documentSymbolsSchema } from './tools/document_symbols';
+import { listIndices, listIndicesSchema } from './tools/list_indices';
+
 import {
   createStartChainOfInvestigationHandler,
   startChainOfInvestigationSchema,
@@ -86,6 +88,16 @@ export class McpServer {
         inputSchema: documentSymbolsSchema.shape,
       },
       documentSymbols
+    );
+
+    const listIndicesDescription = fs.readFileSync(path.join(__dirname, 'tools/list_indices.md'), 'utf-8');
+    this.server.registerTool(
+      'list_indices',
+      {
+        description: listIndicesDescription,
+        inputSchema: listIndicesSchema.shape,
+      },
+      listIndices
     );
 
     const chainOfInvestigationMarkdown = fs.readFileSync(
