@@ -15,6 +15,7 @@ Start your "chain of investigation" with broad semantic exploration.
 - `kql`: Filter expression (combined with AND if both provided)
 - `size`: Results per page
 - `page`: Pagination
+- `index`: The Elasticsearch index to search (optional)
 
 ## KQL Fields
 **Basic**: `type`, `language`, `kind`, `filePath`, `containerPath`, `startLine`, `endLine`

@@ -120,4 +120,22 @@ describe('symbol_analysis', () => {
     expect(report.documentation).toHaveLength(1);
     expect(report.documentation[0].filePath).toBe('README.md');
   });
+
+  it('should use the provided index when searching', async () => {
+    (client.search as jest.Mock).mockResolvedValue({
+      aggregations: {
+        files: {
+          buckets: [],
+        },
+      },
+    });
+
+    await symbolAnalysis({ symbolName: 'mySymbol', index: 'my-test-index' });
+
+    expect(client.search).toHaveBeenCalledWith(
+      expect.objectContaining({
+        index: 'my-test-index',
+      })
+    );
+  });
 });

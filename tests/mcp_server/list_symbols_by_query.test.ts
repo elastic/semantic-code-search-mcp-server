@@ -36,18 +36,46 @@ describe('list_symbols_by_query', () => {
 
     const result = await listSymbolsByQuery({ kql: 'language: typescript' });
 
-    expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith({
-      bool: {
-        minimum_should_match: 1,
-        should: [
-          {
-            match: {
-              language: 'typescript',
+    expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith(
+      {
+        bool: {
+          minimum_should_match: 1,
+          should: [
+            {
+              match: {
+                language: 'typescript',
+              },
             },
-          },
-        ],
+          ],
+        },
       },
-    });
+      undefined
+    );
+
+    expect(JSON.parse(result.content[0].text as string)).toEqual(mockAggregations);
+  });
+
+  it('should call aggregateBySymbolsAndImports with the correct DSL query and index', async () => {
+    const mockAggregations = {};
+    (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
+
+    const result = await listSymbolsByQuery({ kql: 'language: typescript', index: 'my-index' });
+
+    expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith(
+      {
+        bool: {
+          minimum_should_match: 1,
+          should: [
+            {
+              match: {
+                language: 'typescript',
+              },
+            },
+          ],
+        },
+      },
+      'my-index'
+    );
 
     expect(JSON.parse(result.content[0].text as string)).toEqual(mockAggregations);
   });

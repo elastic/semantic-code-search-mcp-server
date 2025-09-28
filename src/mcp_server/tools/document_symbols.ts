@@ -9,6 +9,7 @@ import { CallToolResult } from '@modelcontextprotocol/sdk/types';
  */
 export const documentSymbolsSchema = z.object({
   filePath: z.string(),
+  index: z.string().optional().describe('The Elasticsearch index to search.'),
 });
 
 export type DocumentSymbolsParams = z.infer<typeof documentSymbolsSchema>;
@@ -28,14 +29,14 @@ interface Symbol {
  * `CallToolResult` object containing the list of key symbols to document.
  */
 export async function documentSymbols(params: DocumentSymbolsParams): Promise<CallToolResult> {
-  const { filePath } = params;
+  const { filePath, index } = params;
 
   // 1. Get the reconstructed file content
-  const reconstructedFile = await readFile({ filePaths: [filePath] });
+  const reconstructedFile = await readFile({ filePaths: [filePath], index });
   const reconstructedContent = reconstructedFile.content[0].text;
 
   // 2. Get all the symbols in the file
-  const allSymbolsResult = await listSymbolsByQuery({ kql: `filePath: "${filePath}"` });
+  const allSymbolsResult = await listSymbolsByQuery({ kql: `filePath: "${filePath}"`, index });
   const allSymbols = JSON.parse(allSymbolsResult.content[0].text as string);
   const symbolsForFile = allSymbols[filePath] || [];
 

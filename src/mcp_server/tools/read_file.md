@@ -1,7 +1,8 @@
 Reconstruct file content from indexed chunks when you have a file path.
 
 ## Parameters
-`filePaths` (`string[]`): Array of relative file paths
+- `filePaths` (`string[]`): Array of relative file paths
+- `index` (`string`): The Elasticsearch index to search (optional)
 
 ## Returns
 Map of file paths to chunk arrays:

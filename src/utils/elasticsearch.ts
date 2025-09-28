@@ -159,10 +159,11 @@ interface FileAggregationWithImports {
 }
 
 export async function aggregateBySymbolsAndImports(
-  query: QueryDslQueryContainer
+  query: QueryDslQueryContainer,
+  index?: string
 ): Promise<Record<string, FileSymbolsAndImports>> {
   const response = await client.search<unknown, FileAggregationWithImports>({
-    index: indexName,
+    index: index || elasticsearchConfig.index,
     query,
     aggs: {
       files: {
@@ -242,7 +243,7 @@ export async function aggregateBySymbolsAndImports(
           kind: b.kind.buckets[0].key,
           line: b.line.buckets[0].key,
         }))
-        .reduce((acc, { kind, ...rest }) => {
+        .reduce((acc: Record<string, SymbolInfo[]>, { kind, ...rest }) => {
           if (!acc[kind]) {
             acc[kind] = [];
           }
@@ -256,7 +257,7 @@ export async function aggregateBySymbolsAndImports(
           type: b.type.buckets[0].key,
           symbols: b.symbols.buckets.map(s => s.key),
         }))
-        .reduce((acc, { type, ...rest }) => {
+        .reduce((acc: Record<string, ImportInfo[]>, { type, ...rest }) => {
           if (!acc[type]) {
             acc[type] = [];
           }

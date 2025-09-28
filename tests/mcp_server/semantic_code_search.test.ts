@@ -66,4 +66,25 @@ describe('semantic_code_search', () => {
       _source_excludes: ['code_vector', 'semantic_text'],
     });
   });
+
+  it('should use the provided index when searching', async () => {
+    (client.search as jest.Mock).mockResolvedValue({
+      hits: {
+        hits: [],
+      },
+    });
+
+    await semanticCodeSearch({
+      query: 'test query',
+      index: 'my-test-index',
+      page: 1,
+      size: 10,
+    });
+
+    expect(client.search).toHaveBeenCalledWith(
+      expect.objectContaining({
+        index: 'my-test-index',
+      })
+    );
+  });
 });

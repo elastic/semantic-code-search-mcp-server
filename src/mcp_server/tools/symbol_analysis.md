@@ -9,6 +9,10 @@ Precision tool for step 2 of "chain of investigation" - analyze specific symbols
 1. Find symbols via `semantic_code_search` or `list_symbols_by_query`
 2. Pass exact symbol name to `symbol_analysis` for complete connections
 
+## Parameters
+- `symbolName`: The name of the symbol to analyze.
+- `index`: The Elasticsearch index to search (optional).
+
 ## Returns
 Comprehensive cross-referenced report showing:
 - Definition location

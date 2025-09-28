@@ -11,6 +11,10 @@ Direct KQL querying for symbols and imports from known paths or attributes.
 3. Identify specific symbols of interest
 4. Switch to `symbol_analysis` for deep connections
 
+## Parameters
+- `kql`: The KQL query string.
+- `index`: The Elasticsearch index to search (optional).
+
 ## Example Query
 ```json
 { "kql": "filePath: *src/plugins*" }

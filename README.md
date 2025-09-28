@@ -183,6 +183,8 @@ The MCP server provides the following tools:
 | `read_file_from_chunks` | Reads the content of a file from the index, providing a reconstructed view based on the most important indexed chunks. |
 | `document_symbols` | Analyzes a file to identify the key symbols that would most benefit from documentation. This is useful for automating the process of improving the semantic quality of a codebase. |
 
+**Note:** All of the tools accept an optional `index` parameter that allows you to override the `ELASTICSEARCH_INDEX` for a single query.
+
 ---
 
 ## Configuration

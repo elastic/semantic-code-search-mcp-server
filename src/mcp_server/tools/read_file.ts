@@ -8,6 +8,7 @@ import { Sort } from '@elastic/elasticsearch/lib/api/types';
  */
 export const readFileSchema = z.object({
   filePaths: z.array(z.string()).nonempty(),
+  index: z.string().optional().describe('The Elasticsearch index to search.'),
 });
 
 /**
@@ -48,7 +49,7 @@ interface ReconstructedChunk {
  * @returns {Promise<object>} A promise that resolves to an object containing the reconstructed file content,
  * formatted for the MCP server.
  */
-export async function readFile({ filePaths }: z.infer<typeof readFileSchema>) {
+export async function readFile({ filePaths, index }: z.infer<typeof readFileSchema>) {
   const allHits: CodeChunkHit[] = [];
   let searchAfter: (string | number)[] | undefined = undefined;
 
@@ -60,11 +61,11 @@ export async function readFile({ filePaths }: z.infer<typeof readFileSchema>) {
     { chunk_hash: 'asc' }, // Tie-breaker for consistent sorting
   ];
 
-  const { index } = elasticsearchConfig;
+  const { index: defaultIndex } = elasticsearchConfig;
 
   while (true) {
     const response = await client.search({
-      index,
+      index: index || defaultIndex,
       size: 1000, // Fetch in batches of 1000
       _source: ['filePath', 'content', 'startLine', 'endLine', 'kind'],
       query: {

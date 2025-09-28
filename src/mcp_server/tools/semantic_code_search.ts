@@ -17,6 +17,7 @@ export const semanticCodeSearchSchema = z.object({
   kql: z.string().optional().describe('The KQL query string.'),
   page: z.number().default(1).describe('The page number for pagination.'),
   size: z.number().default(25).describe('The number of results per page.'),
+  index: z.string().optional().describe('The Elasticsearch index to search.'),
 });
 
 export type SemanticCodeSearchParams = z.infer<typeof semanticCodeSearchSchema>;
@@ -32,7 +33,7 @@ export type SemanticCodeSearchParams = z.infer<typeof semanticCodeSearchSchema>;
  * `CallToolResult` object containing the search results.
  */
 export async function semanticCodeSearch(params: SemanticCodeSearchParams): Promise<CallToolResult> {
-  const { query, kql, page, size } = params;
+  const { query, kql, page, size, index } = params;
 
   if (!query && !kql) {
     throw new Error('Either a query for semantic search or a kql filter is required.');
@@ -62,7 +63,7 @@ export async function semanticCodeSearch(params: SemanticCodeSearchParams): Prom
   }
 
   const response = await client.search({
-    index: elasticsearchConfig.index,
+    index: index || elasticsearchConfig.index,
     query: esQuery,
     from: (page - 1) * size,
     size: size,

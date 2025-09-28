@@ -51,6 +51,7 @@ interface FileInfo {
  */
 export const symbolAnalysisSchema = z.object({
   symbolName: z.string().describe('The name of the symbol to analyze.'),
+  index: z.string().optional().describe('The Elasticsearch index to search.'),
 });
 
 export type SymbolAnalysisParams = z.infer<typeof symbolAnalysisSchema>;
@@ -99,14 +100,14 @@ interface SymbolAggregation {
  * `CallToolResult` object containing the symbol analysis report.
  */
 export async function symbolAnalysis(params: SymbolAnalysisParams): Promise<CallToolResult> {
-  const { symbolName } = params;
+  const { symbolName, index } = params;
   const kql = `content: "${symbolName}"`;
 
   const ast = fromKueryExpression(kql);
   const dsl = toElasticsearchQuery(ast);
 
   const response = await client.search<unknown, SymbolAggregation>({
-    index: elasticsearchConfig.index,
+    index: index || elasticsearchConfig.index,
     query: dsl,
     aggs: {
       files: {
