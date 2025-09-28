@@ -52,3 +52,4 @@ Returns file paths mapped to symbols and imports:
 ```
 
 **Note**: Symbols are grouped by type (function.call, variable.name, etc.) rather than a flat array.
+**Note:** Requires the same `index` used in the initial `semantic_code_search` to maintain context.

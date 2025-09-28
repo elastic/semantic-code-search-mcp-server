@@ -31,3 +31,4 @@ Map of file paths to chunk arrays:
 - `startLine`: Beginning line number
 - `endLine`: Ending line number
 - `kind`: Tree-sitter node type (e.g., `function_declaration`, `import_statement`)
+**Note:** Requires the same `index` used in the initial `semantic_code_search` to maintain context.

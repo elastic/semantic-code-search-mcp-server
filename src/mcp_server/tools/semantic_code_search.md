@@ -42,7 +42,10 @@ Start your "chain of investigation" with broad semantic exploration.
 { "kql": "filePath: *src/utils*" }
 
 // Exact match (with quotes)
-{ "kql": "symbols.name: \"getUserData\"" }
+{ "kql": "content: \"getUserData\"" }
+
+// Nested query for exact symbol name
+{ "kql": "symbols: { name: \"EuiSpacer\" }" }
 
 // Combined wildcard and exact
 { "kql": "filePath: *components* and kind: \"function_declaration\"" }
@@ -50,3 +53,4 @@ Start your "chain of investigation" with broad semantic exploration.
 // Pagination
 { "query": "state management", "size": 50, "page": 2 }
 ```
+**Note:** The `index` used in this search **MUST** be passed to all subsequent tools (`symbol_analysis`, `read_file_from_chunks`, etc.) to ensure they query the same codebase.

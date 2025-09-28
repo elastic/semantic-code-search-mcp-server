@@ -25,3 +25,4 @@ Comprehensive cross-referenced report showing:
 ```json
 { "symbolName": "indicatorTypesSchema" }
 ```
+**Note:** Requires the same `index` used in the initial `semantic_code_search` to maintain context.
