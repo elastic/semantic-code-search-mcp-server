@@ -71,6 +71,22 @@ export async function semanticCodeSearch(params: SemanticCodeSearchParams): Prom
   });
 
   return {
-    content: [{ type: 'text', text: JSON.stringify(response.hits.hits.map(hit => hit._source)) }]
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify(
+          response.hits.hits.map(hit => {
+            const { type, language, kind, filePath, content } = hit._source as {
+              type: string;
+              language: string;
+              kind: string;
+              filePath: string;
+              content: string;
+            };
+            return { score: hit._score, type, language, kind, filePath, content };
+          })
+        ),
+      },
+    ],
   };
 }

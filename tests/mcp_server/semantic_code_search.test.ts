@@ -67,6 +67,48 @@ describe('semantic_code_search', () => {
     });
   });
 
+  it('should return a simplified response', async () => {
+    const mockHits = [
+      {
+        _score: 1.23,
+        _source: {
+          type: 'code',
+          language: 'typescript',
+          kind: 'function_declaration',
+          filePath: 'src/index.ts',
+          content: 'f()',
+          startLine: 1,
+          endLine: 1,
+        },
+      },
+    ];
+
+    (client.search as jest.Mock).mockResolvedValue({
+      hits: {
+        hits: mockHits,
+      },
+    });
+
+    const result = await semanticCodeSearch({
+      query: 'test query',
+      page: 1,
+      size: 10,
+    });
+
+    const expectedContent = [
+      {
+        score: 1.23,
+        type: 'code',
+        language: 'typescript',
+        kind: 'function_declaration',
+        filePath: 'src/index.ts',
+        content: 'f()',
+      },
+    ];
+
+    expect(JSON.parse(result.content[0].text as string)).toEqual(expectedContent);
+  });
+
   it('should use the provided index when searching', async () => {
     (client.search as jest.Mock).mockResolvedValue({
       hits: {
