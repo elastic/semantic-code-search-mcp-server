@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { client } from '../../utils/elasticsearch';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { SearchRequest } from '@elastic/elasticsearch/lib/api/types';
+import { elasticsearchConfig } from '../../config';
 
 interface AggregationBucket {
   key: string;
@@ -69,46 +70,50 @@ export async function listIndices(): Promise<CallToolResult> {
     };
   }
 
-  const aliases = Object.values(aliasesResponse)
-    .flatMap(indexInfo => (indexInfo.aliases ? Object.keys(indexInfo.aliases) : []))
-    .filter(alias => alias.endsWith('-repo'));
-
-  if (aliases.length === 0) {
-    return {
-      content: [{ type: 'text', text: 'No aliases ending in "-repo" found for the matching indices.' }],
-    };
-  }
-
+  const defaultIndexName = elasticsearchConfig.index;
   let result = '';
+  const indexEntries = Object.entries(aliasesResponse);
 
-  for (const alias of aliases) {
-    const searchResponse = await client.search<unknown, Aggregations>({
-      index: alias,
-      ...aggregationQuery,
-    });
+  for (const [indexName, indexInfo] of indexEntries) {
+    if (!indexInfo.aliases) continue;
 
-    const aggregations = searchResponse.aggregations;
+    const repoAliases = Object.keys(indexInfo.aliases).filter(alias => alias.endsWith('-repo'));
 
-    if (!aggregations) {
-      continue;
-    }
+    for (const alias of repoAliases) {
+      const searchResponse = await client.search<unknown, Aggregations>({
+        index: alias,
+        ...aggregationQuery,
+      });
 
-    const filesIndexed = aggregations.filesIndexed.value;
-    const numberOfSymbols = aggregations.NumberOfSymbols.total.value;
-    const languages = aggregations.Languages.buckets
-      .map((bucket: AggregationBucket) => `${bucket.key} (${formatNumber(bucket.numberOfFiles.value)} files)`)
-      .join(', ');
-    const types = aggregations.Types.buckets
-      .map((bucket: AggregationBucket) => `${bucket.key} (${formatNumber(bucket.numberOfFiles.value)} files)`)
-      .join(', ');
+      const aggregations = searchResponse.aggregations;
 
-    result += `Index: ${alias}\n`;
-    result += `- Files: ${filesIndexed.toLocaleString()} total\n`;
-    result += `- Symbols: ${numberOfSymbols.toLocaleString()} total\n`;
-    result += `- Languages: ${languages}\n`;
-    result += `- Content: ${types}\n`;
-    if (aliases.indexOf(alias) < aliases.length - 1) {
-      result += '---\n';
+      if (!aggregations) {
+        continue;
+      }
+
+      const filesIndexed = aggregations.filesIndexed.value;
+      const numberOfSymbols = aggregations.NumberOfSymbols.total.value;
+      const languages = aggregations.Languages.buckets
+        .map((bucket: AggregationBucket) => `${bucket.key} (${formatNumber(bucket.numberOfFiles.value)} files)`)
+        .join(', ');
+      const types = aggregations.Types.buckets
+        .map((bucket: AggregationBucket) => `${bucket.key} (${formatNumber(bucket.numberOfFiles.value)} files)`)
+        .join(', ');
+
+      const isDefault = indexName === defaultIndexName || alias === defaultIndexName;
+      result += `Index: ${alias}${isDefault ? ' (Default)' : ''}\n`;
+      result += `- Files: ${filesIndexed.toLocaleString()} total\n`;
+      result += `- Symbols: ${numberOfSymbols.toLocaleString()} total\n`;
+      result += `- Languages: ${languages}\n`;
+      result += `- Content: ${types}\n`;
+
+      // Check if it's not the last alias of the last index entry
+      const isLastName = repoAliases.indexOf(alias) === repoAliases.length - 1;
+      const isLastEntry = indexEntries.indexOf(indexEntries.find(entry => entry[0] === indexName)!) === indexEntries.length - 1;
+
+      if (!isLastName || !isLastEntry) {
+        result += '---\n';
+      }
     }
   }
   return {
