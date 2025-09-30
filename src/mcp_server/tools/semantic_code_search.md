@@ -17,11 +17,13 @@ Start your "chain of investigation" with broad semantic exploration.
 - `page`: Pagination
 - `index`: The Elasticsearch index to search (optional)
 
-## KQL Fields
-**Basic**: `type`, `language`, `kind`, `filePath`, `containerPath`, `startLine`, `endLine`
-**Imports**: `imports.path`, `imports.type`, `imports.symbols`
-**Symbols**: `symbols.name`, `symbols.kind`, `symbols.line`
-**Timestamps**: `created_at`, `updated_at`
+## Response Fields
+- `score`: The relevance score of the result.
+- `type`: The type of the code chunk (e.g., `code`, `doc`).
+- `language`: The programming language of the file.
+- `kind`: The type of the code symbol (e.g., `function_declaration`, `import_statement`).
+- `filePath`: The relative path to the file.
+- `content`: The raw content of the code chunk.
 
 ## Query Rules
 - Use semantic terms from user's actual question

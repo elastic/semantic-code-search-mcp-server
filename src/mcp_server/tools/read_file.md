@@ -1,34 +1,36 @@
-Reconstruct file content from indexed chunks when you have a file path.
+Reconstructs file content from indexed code chunks, presenting a single string that mirrors the original file's structure as closely as possible.
 
 ## Parameters
-- `filePaths` (`string[]`): Array of relative file paths
-- `index` (`string`): The Elasticsearch index to search (optional)
+- `filePaths` (`string[]`): An array of relative file paths to reconstruct.
+- `index` (`string`, optional): The specific Elasticsearch index to query.
 
 ## Returns
-Map of file paths to chunk arrays:
+A string containing the reconstructed file content. Gaps between code chunks are indicated with a comment, for example: `// (5 lines omitted)`.
 
-```json
-{
-  "path/to/file.js": [
-    {
-      "content": "import { useState } from 'react';",
-      "startLine": 1,
-      "endLine": 1,
-      "kind": "import_statement"
-    },
-    {
-      "content": "const MyComponent = () => {",
-      "startLine": 3,
-      "endLine": 3,
-      "kind": "lexical_declaration"
-    }
-  ]
-}
+Example output:
+```
+File: src/mcp_server/bin.ts
+
+// (1 lines omitted)
+/**
+* This is the main entry point for the MCP server.
+*
+* It parses the command-line arguments to determine whether to start the
+* server in stdio or HTTP mode, and then creates and starts the server.
+*/
+import { McpServer } from './server';
+// (1 lines omitted)
+const serverType = process.argv[2] || 'stdio';
+// (1 lines omitted)
+const server = new McpServer();
+// (2 lines omitted)
+server.start()
+// (1 lines omitted)
+const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+server.startHttp(port)
+// (1 lines omitted)
+console.error(`Unknown server type: ${serverType}`)
+process.exit(1)
 ```
 
-## Chunk Properties
-- `content`: Source code text
-- `startLine`: Beginning line number
-- `endLine`: Ending line number
-- `kind`: Tree-sitter node type (e.g., `function_declaration`, `import_statement`)
-**Note:** Requires the same `index` used in the initial `semantic_code_search` to maintain context.
+**Note:** The reconstruction is based on indexed code chunks. While it aims to be accurate, it may not be a perfect 1:1 representation of the original file. Requires the same `index` used in the initial `semantic_code_search` to maintain context.
