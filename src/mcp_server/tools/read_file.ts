@@ -57,6 +57,7 @@ export async function readFile({ filePaths, index }: z.infer<typeof readFileSche
   const sort: Sort = [
     { filePath: 'asc' },
     { startLine: 'asc' },
+    { endLine: 'desc' },
     { updated_at: 'desc' },
     { chunk_hash: 'asc' }, // Tie-breaker for consistent sorting
   ];
@@ -100,7 +101,7 @@ export async function readFile({ filePaths, index }: z.infer<typeof readFileSche
   }
 
   // Reconstruct each file
-  const reconstructedFiles: { [filePath: string]: ReconstructedChunk[] | string } = {};
+  const reconstructedFiles: { [filePath: string]: string } = {};
   for (const filePath of filePaths) {
     const chunks = chunksByFile.get(filePath);
 
@@ -109,12 +110,49 @@ export async function readFile({ filePaths, index }: z.infer<typeof readFileSche
       continue;
     }
 
-    reconstructedFiles[filePath] = chunks.map(chunk => chunk._source);
+    // With the new sort order (startLine asc, endLine desc), we can do a simple
+    // filter to remove chunks that are completely contained within a previous one.
+    const dedupedChunks: ReconstructedChunk[] = [];
+    let lastEndLine = -1;
+
+    for (const chunk of chunks) {
+      if (chunk._source.endLine > lastEndLine) {
+        dedupedChunks.push(chunk._source);
+        lastEndLine = chunk._source.endLine;
+      }
+    }
+
+    let reconstructedContent = '';
+    let currentLine = 1;
+
+    for (const chunk of dedupedChunks) {
+      const gap = chunk.startLine - currentLine;
+
+      if (reconstructedContent.length > 0) {
+        // Not the first chunk
+        if (gap > 0) {
+          reconstructedContent += `\n// (${gap} lines omitted)\n`;
+        } else if (gap === 0) {
+          reconstructedContent += '\n';
+        }
+        // if gap < 0, it's an overlap, we just append. The dedupe logic should handle this.
+      } else {
+        // First chunk
+        if (gap > 0) {
+          // file doesn't start at line 1
+          reconstructedContent += `// (${gap} lines omitted)\n`;
+        }
+      }
+
+      reconstructedContent += chunk.content;
+      currentLine = chunk.endLine + 1;
+    }
+    reconstructedFiles[filePath] = reconstructedContent;
   }
 
   const content = Object.entries(reconstructedFiles).map(([filePath, fileContent]) => ({
     type: 'text' as const,
-    text: `File: ${filePath}\n\n${JSON.stringify(fileContent, null, 2)}`,
+    text: `File: ${filePath}\n\n${fileContent}`,
   }));
 
   return {
