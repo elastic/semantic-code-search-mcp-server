@@ -11,7 +11,7 @@ Precision tool for step 2 of "chain of investigation" - analyze specific symbols
 
 ## Parameters
 - `symbolName`: The name of the symbol to analyze.
-- `index`: The Elasticsearch index to search (optional).
+- `index`: (Optional) Specify only when searching across multiple indices. Omit to use the default index.
 
 ## Returns
 Comprehensive cross-referenced report showing:

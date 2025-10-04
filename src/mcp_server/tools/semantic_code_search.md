@@ -1,58 +1,120 @@
-Start your "chain of investigation" with broad semantic exploration.
+## Investigation Workflow
 
-## Use Cases
-- **Discovery**: "Where is SLO SLI logic?" / "How are API keys handled?"
-- **Entry Points**: Broad queries → relevant files → specific symbols
-- **Refinement**: Narrow with specific terms or KQL filters
+**1. Semantic Discovery** - Find relevant code with conceptual queries
+```json
+{ "query": "your concept here", "kql": "kind: \"function_declaration\"", "size": 25 }
+```
 
-## Workflow
-1. Broad semantic query → understand landscape
-2. Identify key files/symbols
-3. Switch to `symbol_analysis` for specific symbols
+**2. Symbol Analysis** - Deep dive on discovered symbols
+```json
+{ "symbolName": "SymbolYouFound" }
+```
+
+**3. Map Symbols** - Get structured overview of related code
+```json
+{ "kql": "\"ActualSymbol\" and (relatedSymbol1 or relatedSymbol2)" }
+```
+
+**4. Read Code** - Get full context
+```json
+{ "filePaths": ["paths/from/above.ts"] }
+```
+
+---
 
 ## Parameters
-- `query`: Semantic search terms
-- `kql`: Filter expression (combined with AND if both provided)
-- `size`: Results per page
-- `page`: Pagination
-- `index`: The Elasticsearch index to search (optional)
+- `query`: The semantic seach phrase based on the concept
+- `kql`: The KQL query string using **actual symbol names** (not generic terms)
+- `index`: (Optional) Specify only when searching across multiple indices. Omit to use the default index.
 
-## Response Fields
-- `score`: The relevance score of the result.
-- `type`: The type of the code chunk (e.g., `code`, `doc`).
-- `language`: The programming language of the file.
-- `kind`: The type of the code symbol (e.g., `function_declaration`, `import_statement`).
-- `filePath`: The relative path to the file.
-- `content`: The raw content of the code chunk.
+---
 
-## Query Rules
-- Use semantic terms from user's actual question
-- Show search parameters: `query: "X"` and `kql: "Y"`
-- Wildcards: NO quotes for patterns, quotes for EXACT matches only
-- Use `content: "symbol-name"` for exact symbol matches
-- Check `get_distinct_values` for valid `kind` values
+## Tool Selection
 
-## Examples
-```json
-// Semantic + KQL
-{ "query": "render a table", "kql": "kind: \"function_declaration\"" }
+**semantic_code_search**: First search to discover concepts and symbols. Returns code snippets with relevance scores.
 
-// KQL only
-{ "kql": "language: \"typescript\" and kind: \"class_declaration\"", "size": 5 }
+**symbol_analysis**: Once you find a key symbol, get complete usage map (definitions, usages, imports, docs).
 
-// Wildcard search (no quotes on wildcard)
-{ "kql": "filePath: *src/utils*" }
+**map_symbols_by_query**: After symbol_analysis, use actual symbol names in KQL to get structured file-by-file view. Shows which files have the most relevant code (more symbols = more relevant).
 
-// Exact match (with quotes)
-{ "kql": "content: \"getUserData\"" }
+**read_file_from_chunks**: Read full implementations once you've identified the key files.
 
-// Nested query for exact symbol name
-{ "kql": "symbols: { name: \"EuiSpacer\" }" }
+---
 
-// Combined wildcard and exact
-{ "kql": "filePath: *components* and kind: \"function_declaration\"" }
+## When to Use What
 
-// Pagination
-{ "query": "state management", "size": 50, "page": 2 }
+**semantic_code_search**: Don't know symbol names, exploring concepts
+**symbol_analysis**: Found key symbols, need complete usage map
+**map_symbols_by_query**: Know exact symbols, need structured file overview
+**Combine**: Semantic + KQL filters for discovery, then map_symbols for structure
+
+---
+
+## KQL Syntax
+
+**Boolean**: lowercase `and`, `or`, `not` with `(parentheses)` for grouping
+**Exact match**: `"quotes for exact"` - no quotes for substring
+**Wildcards**: `filePath: *pattern*` (no quotes on wildcards)
+**Fields**: `content:`, `filePath:`, `kind:`, `language:`
+
+**Common kinds**: `function_declaration`, `class_declaration`, `interface_declaration`, `type_alias_declaration`, `method_definition`, `call_expression`
+
+Use `get_distinct_values` to see all available kinds in your index.
+
+---
+
+## Key Principles
+
+✅ Start broad (semantic) → analyze key symbols → map with actual names → read files
+✅ Use **map_symbols_by_query** with actual symbol names from symbol_analysis
+✅ Files with more symbols in map_symbols results = more relevant
+✅ Each search informs the next - build incrementally
+✅ Only supply an `index` WHEN the user asks for a differnt index
+✅ Use same `index` parameter IF working across multiple indices
+
+❌ Don't copy example queries - extract the pattern
+❌ Don't use generic KQL terms like "handler" or "manager" - use actual discovered symbols
+❌ Don't skip symbol_analysis when you find important symbols
+❌ Don't use semantic_code_search for structured queries - use map_symbols_by_query
+
+---
+
+## Quick Patterns
+
+**Architecture discovery**:
 ```
-**Note:** The `index` used in this search **MUST** be passed to all subsequent tools (`symbol_analysis`, `read_file_from_chunks`, etc.) to ensure they query the same codebase.
+semantic_code_search → symbol_analysis → map_symbols_by_query → read_file_from_chunks
+```
+
+**Find related code**:
+```
+symbol_analysis (get related symbols) → map_symbols_by_query (structured view)
+```
+
+**Data flow**:
+```
+semantic_code_search (entry point) → symbol_analysis (chain) → read_file_from_chunks
+```
+
+---
+
+## Example Progression
+
+```json
+// 1. Discover concept
+{ "query": "filter events LensEmbeddable" }
+// → Found: onFilter, prepareEventHandler, LensPublicCallbacks
+
+// 2. Analyze key symbol
+{ "symbolName": "onFilter" }
+// → Found related: LensPublicCallbacks, PreventableEvent, prepareEventHandler
+
+// 3. Map with actual symbols (not generic terms!)
+{ "kql": "\"onFilter\" and (LensPublicCallbacks or PreventableEvent or prepareEventHandler)" }
+// → Returns structured file-by-file view with symbol counts
+
+// 4. Read the most relevant files
+{ "filePaths": ["path/with/most/symbols.ts"] }
+```
+
+**Note**: Step 3 uses actual symbol names discovered in steps 1-2, NOT generic terms like "lens" or "embeddable".

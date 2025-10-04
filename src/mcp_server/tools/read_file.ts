@@ -106,7 +106,7 @@ export async function readFile({ filePaths, index }: z.infer<typeof readFileSche
     const chunks = chunksByFile.get(filePath);
 
     if (!chunks || chunks.length === 0) {
-      reconstructedFiles[filePath] = '// File not found in index';
+      reconstructedFiles[filePath] = '// File not found in index... try a relative path.';
       continue;
     }
 

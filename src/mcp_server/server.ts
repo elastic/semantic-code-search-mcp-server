@@ -40,8 +40,9 @@ export class McpServer {
 
   private registerTools() {
     const semanticCodeSearchDescription = fs.readFileSync(path.join(__dirname, 'tools/semantic_code_search.md'), 'utf-8');
-    const listSymbolsByQueryDescription = fs.readFileSync(path.join(__dirname, 'tools/list_symbols_by_query.md'), 'utf-8');
+    // const listSymbolsByQueryDescription = fs.readFileSync(path.join(__dirname, 'tools/list_symbols_by_query.md'), 'utf-8');
     const symbolAnalysisDescription = fs.readFileSync(path.join(__dirname, 'tools/symbol_analysis.md'), 'utf-8');
+    const mapSymbolsByQueryDescription = fs.readFileSync(path.join(__dirname, 'tools/map_symbols_by_query.md'), 'utf-8');
 
     this.server.registerTool(
       'semantic_code_search',
@@ -52,10 +53,19 @@ export class McpServer {
       semanticCodeSearch
     );
 
+    // this.server.registerTool(
+    //   'list_symbols_by_query',
+    //   {
+    //     description: listSymbolsByQueryDescription,
+    //     inputSchema: listSymbolsByQuerySchema.shape,
+    //   },
+    //   listSymbolsByQuery
+    // );
+
     this.server.registerTool(
-      'list_symbols_by_query',
+      'map_symbols_by_query',
       {
-        description: listSymbolsByQueryDescription,
+        description: mapSymbolsByQueryDescription,
         inputSchema: listSymbolsByQuerySchema.shape,
       },
       listSymbolsByQuery
