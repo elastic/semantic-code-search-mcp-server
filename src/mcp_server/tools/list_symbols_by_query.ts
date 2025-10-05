@@ -10,6 +10,7 @@ import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 export const listSymbolsByQuerySchema = z.object({
   kql: z.string().describe('The KQL query string.'),
   index: z.string().optional().describe('The Elasticsearch index to search.'),
+  size: z.number().optional().describe('The number of top level files to return').default(1000),
 });
 
 export type ListSymbolsByQueryParams = z.infer<typeof listSymbolsByQuerySchema>;
@@ -25,12 +26,12 @@ export type ListSymbolsByQueryParams = z.infer<typeof listSymbolsByQuerySchema>;
  * `CallToolResult` object containing the aggregated symbols.
  */
 export async function listSymbolsByQuery(params: ListSymbolsByQueryParams): Promise<CallToolResult> {
-  const { kql, index } = params;
+  const { kql, index, size } = params;
 
   const ast = fromKueryExpression(kql);
   const dsl = toElasticsearchQuery(ast);
 
-  const results = await aggregateBySymbolsAndImports(dsl, index);
+  const results = await aggregateBySymbolsAndImports(dsl, index, size);
 
   return {
     content: [{ type: 'text', text: JSON.stringify(results) }]

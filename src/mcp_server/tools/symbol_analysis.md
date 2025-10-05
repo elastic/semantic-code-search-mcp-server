@@ -11,7 +11,7 @@ Precision tool for step 2 of "chain of investigation" - analyze specific symbols
 
 ## Parameters
 - `symbolName`: The name of the symbol to analyze.
-- `index`: The Elasticsearch index to search (optional).
+- `index`: (Optional) Specify only when searching across multiple indices. Omit to use the default index.
 
 ## Returns
 Comprehensive cross-referenced report showing:
@@ -25,4 +25,4 @@ Comprehensive cross-referenced report showing:
 ```json
 { "symbolName": "indicatorTypesSchema" }
 ```
-**Note:** Requires the same `index` used in the initial `semantic_code_search` to maintain context.
+**Note**: The `index` parameter is optional. Only specify it when you need to search a specific index different from the default.

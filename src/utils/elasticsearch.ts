@@ -160,7 +160,8 @@ interface FileAggregationWithImports {
 
 export async function aggregateBySymbolsAndImports(
   query: QueryDslQueryContainer,
-  index?: string
+  index?: string,
+  size?: number,
 ): Promise<Record<string, FileSymbolsAndImports>> {
   const response = await client.search<unknown, FileAggregationWithImports>({
     index: index || elasticsearchConfig.index,
@@ -169,7 +170,7 @@ export async function aggregateBySymbolsAndImports(
       files: {
         terms: {
           field: 'filePath',
-          size: 1000,
+          size: size != null ? size : 1000,
         },
         aggs: {
           symbols: {
