@@ -27,6 +27,7 @@ Typically the **third step** in investigation:
 ## Parameters
 - `kql`: The KQL query string using **actual symbol names** (not generic terms)
 - `index`: (Optional) Specify only when searching across multiple indices. Omit to use the default index.
+- `size`: (Optional) Then number of top level files to return (default: 1000)
 
 ## Example Workflow
 ```json
@@ -68,4 +69,5 @@ Files with **more symbol matches** are typically more relevant to your investiga
 ```
 
 **Note**: Symbols are grouped by type (function.call, variable.name, etc.) rather than a flat array.
+
 **Note**: The `index` parameter is optional. Only specify it when you need to search a specific index different from the default.

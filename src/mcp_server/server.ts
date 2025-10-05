@@ -40,7 +40,6 @@ export class McpServer {
 
   private registerTools() {
     const semanticCodeSearchDescription = fs.readFileSync(path.join(__dirname, 'tools/semantic_code_search.md'), 'utf-8');
-    // const listSymbolsByQueryDescription = fs.readFileSync(path.join(__dirname, 'tools/list_symbols_by_query.md'), 'utf-8');
     const symbolAnalysisDescription = fs.readFileSync(path.join(__dirname, 'tools/symbol_analysis.md'), 'utf-8');
     const mapSymbolsByQueryDescription = fs.readFileSync(path.join(__dirname, 'tools/map_symbols_by_query.md'), 'utf-8');
 
@@ -53,15 +52,9 @@ export class McpServer {
       semanticCodeSearch
     );
 
-    // this.server.registerTool(
-    //   'list_symbols_by_query',
-    //   {
-    //     description: listSymbolsByQueryDescription,
-    //     inputSchema: listSymbolsByQuerySchema.shape,
-    //   },
-    //   listSymbolsByQuery
-    // );
-
+    /**
+     * `list_symbols_by_query` was renamed to `map_symbols_by_query`
+     */
     this.server.registerTool(
       'map_symbols_by_query',
       {
@@ -110,24 +103,19 @@ export class McpServer {
       listIndices
     );
 
-    const chainOfInvestigationMarkdown = fs.readFileSync(
-      path.join(__dirname, 'prompts/chain_of_investigation.md'),
+    const chainOfInvestigationWorkflowMarkdown = fs.readFileSync(
+      path.join(__dirname, 'prompts/chain_of_investigation.workflow.md'),
       'utf-8'
     );
 
-    const descriptionMatch = chainOfInvestigationMarkdown.match(/## Description\n\n(.*?)(?=\n##|$)/s);
-    const description = descriptionMatch ? descriptionMatch[1].trim() : '';
-
-    const workflowMatch = chainOfInvestigationMarkdown.match(/## Workflow\n\n(.*?)(?=\n##|$)/s);
-    const workflow = workflowMatch ? workflowMatch[1].trim() : '';
 
     this.server.registerPrompt(
       'StartInvestigation',
       {
-        description,
+        description: 'This prompt helps you start a "chain of investigation" to understand a codebase and accomplish a task. It follows a structured workflow that leverages the available tools to explore the code, analyze its components, and formulate a plan.',
         argsSchema: startChainOfInvestigationSchema.shape,
       },
-      createStartChainOfInvestigationHandler(workflow)
+      createStartChainOfInvestigationHandler(chainOfInvestigationWorkflowMarkdown)
     );
   }
 

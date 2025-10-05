@@ -24,7 +24,7 @@ export function createStartChainOfInvestigationHandler(workflow: string) {
     params: StartChainOfInvestigationParams
   ): Promise<GetPromptResult> {
     const { task } = params;
-    const responseText = `Here is a chain of investigation workflow to help you with your task: "${task}"\n\n## Workflow\n\n${workflow}`;
+    const responseText = `Use the workflow below to satisfy this task:\n\n${task}\n\n${workflow}`;
     return {
       messages: [
         {
