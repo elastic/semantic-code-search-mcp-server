@@ -164,7 +164,7 @@ PORT=8080 ELASTICSEARCH_ENDPOINT=http://localhost:9200 npx github:elastic/semant
 
 | Prompt | Description |
 | --- | --- |
-| `StartInvestigation` | A prompt that guides the user through a "chain of investigation" to understand a codebase and accomplish a task. |
+| `StartInvestigation` | This prompt helps you start a "chain of investigation" to understand a codebase and accomplish a task. It follows a structured workflow that leverages the available tools to explore the code, analyze its components, and formulate a plan. |
 
 **Example:**
 ```
@@ -178,7 +178,7 @@ The MCP server provides the following tools:
 | Tool | Description |
 | --- | --- |
 | `semantic_code_search` | Performs a semantic search on the code chunks in the index. This tool can combine a semantic query with a KQL filter to provide flexible and powerful search capabilities. |
-| `list_symbols_by_query` | Lists symbols that match a given KQL query. This is useful for finding all the symbols in a specific file or directory. |
+| `map_symbols_by_query` | Query for a structured map of files containing specific symbols, grouped by file path. This is useful for finding all the symbols in a specific file or directory. Accepts an optional `size` parameter to control the number of files returned. |
 | `symbol_analysis` | Analyzes a symbol and returns a report of its definitions, call sites, and references. This is useful for understanding the role of a symbol in the codebase. |
 | `read_file_from_chunks` | Reads the content of a file from the index, providing a reconstructed view based on the most important indexed chunks. |
 | `document_symbols` | Analyzes a file to identify the key symbols that would most benefit from documentation. This is useful for automating the process of improving the semantic quality of a codebase. |
