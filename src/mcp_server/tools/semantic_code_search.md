@@ -54,7 +54,7 @@
 
 **Boolean**: lowercase `and`, `or`, `not` with `(parentheses)` for grouping
 **Exact match**: `"quotes for exact"` - no quotes for substring
-**Wildcards**: `filePath: *pattern*` (no quotes on wildcards)
+**Wildcards**: `filePath: *pattern*` (**NO QUOTES** on wildcards)
 **Fields**: `content:`, `filePath:`, `kind:`, `language:`
 
 **Common kinds**: `function_declaration`, `class_declaration`, `interface_declaration`, `type_alias_declaration`, `method_definition`, `call_expression`

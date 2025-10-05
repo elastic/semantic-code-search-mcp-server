@@ -68,5 +68,4 @@ Files with **more symbol matches** are typically more relevant to your investiga
 ```
 
 **Note**: Symbols are grouped by type (function.call, variable.name, etc.) rather than a flat array.
-
 **Note**: The `index` parameter is optional. Only specify it when you need to search a specific index different from the default.
