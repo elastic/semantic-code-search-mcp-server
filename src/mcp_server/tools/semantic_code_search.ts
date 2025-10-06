@@ -58,9 +58,19 @@ export async function semanticCodeSearch(params: SemanticCodeSearchParams): Prom
 
   const esQuery: QueryDslQueryContainer = {
     bool: {
-      must
-    }
-  }
+      must,
+      should: [
+        {
+          term: {
+            type: {
+              value: 'doc',
+              boost: 2,
+            },
+          },
+        },
+      ],
+    },
+  };
 
   const response = await client.search({
     index: index || elasticsearchConfig.index,

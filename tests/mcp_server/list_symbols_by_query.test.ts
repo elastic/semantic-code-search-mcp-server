@@ -34,7 +34,7 @@ describe('list_symbols_by_query', () => {
     };
     (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
 
-    const result = await listSymbolsByQuery({ kql: 'language: typescript' });
+    const result = await listSymbolsByQuery({ kql: 'language: typescript', size: 1000 });
 
     expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith(
       {
@@ -49,7 +49,8 @@ describe('list_symbols_by_query', () => {
           ],
         },
       },
-      undefined
+      undefined,
+      1000
     );
 
     expect(JSON.parse(result.content[0].text as string)).toEqual(mockAggregations);
@@ -59,7 +60,11 @@ describe('list_symbols_by_query', () => {
     const mockAggregations = {};
     (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
 
-    const result = await listSymbolsByQuery({ kql: 'language: typescript', index: 'my-index' });
+    const result = await listSymbolsByQuery({
+      kql: 'language: typescript',
+      index: 'my-index',
+      size: 1000,
+    });
 
     expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith(
       {
@@ -74,7 +79,8 @@ describe('list_symbols_by_query', () => {
           ],
         },
       },
-      'my-index'
+      'my-index',
+      1000
     );
 
     expect(JSON.parse(result.content[0].text as string)).toEqual(mockAggregations);

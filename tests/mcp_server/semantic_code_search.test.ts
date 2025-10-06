@@ -59,6 +59,16 @@ describe('semantic_code_search', () => {
               },
             },
           ],
+          should: [
+            {
+              term: {
+                type: {
+                  value: 'doc',
+                  boost: 2,
+                },
+              },
+            },
+          ],
         },
       },
       from: 50,
