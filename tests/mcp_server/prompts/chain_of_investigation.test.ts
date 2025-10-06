@@ -11,7 +11,8 @@ describe('startChainOfInvestigation', () => {
     if (typeof content === 'string' || !('text' in content)) {
       throw new Error('Expected content to be a ContentPart object with a text property');
     }
-    expect(content.text).toContain('Here is a chain of investigation workflow to help you with your task: "My test task"');
-    expect(content.text).toContain('## Workflow\n\nTest workflow');
+    expect(content.text).toContain('Use the workflow below to satisfy this task');
+    expect(content.text).toContain('My test task');
+    expect(content.text).toContain('Test workflow');
   });
 });
