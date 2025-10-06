@@ -62,8 +62,8 @@ export async function semanticCodeSearch(params: SemanticCodeSearchParams): Prom
       should: [
         {
           term: {
-            type: {
-              value: 'doc',
+            language: {
+              value: 'markdown',
               boost: 2,
             },
           },

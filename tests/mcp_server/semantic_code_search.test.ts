@@ -62,8 +62,8 @@ describe('semantic_code_search', () => {
           should: [
             {
               term: {
-                type: {
-                  value: 'doc',
+                language: {
+                  value: 'markdown',
                   boost: 2,
                 },
               },
