@@ -2,8 +2,10 @@ import { listSymbolsByQuery } from '../../src/mcp_server/tools/list_symbols_by_q
 import { aggregateBySymbolsAndImports } from '../../src/utils/elasticsearch';
 
 jest.mock('../../src/utils/elasticsearch', () => ({
-  ...jest.requireActual('../../src/utils/elasticsearch'),
   aggregateBySymbolsAndImports: jest.fn(),
+  elasticsearchConfig: {
+    index: 'semantic-code-search',
+  },
 }));
 
 describe('list_symbols_by_query', () => {

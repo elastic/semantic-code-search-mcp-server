@@ -2,9 +2,11 @@ import { symbolAnalysis } from '../../src/mcp_server/tools/symbol_analysis';
 import { client } from '../../src/utils/elasticsearch';
 
 jest.mock('../../src/utils/elasticsearch', () => ({
-  ...jest.requireActual('../../src/utils/elasticsearch'),
   client: {
     search: jest.fn(),
+  },
+  elasticsearchConfig: {
+    index: 'semantic-code-search',
   },
 }));
 
