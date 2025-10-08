@@ -2,6 +2,11 @@ import { documentSymbols } from '../../src/mcp_server/tools/document_symbols';
 import * as readFileTool from '../../src/mcp_server/tools/read_file';
 import * as listSymbolsByQueryTool from '../../src/mcp_server/tools/list_symbols_by_query';
 
+jest.mock('../../src/utils/elasticsearch', () => ({
+  elasticsearchConfig: {
+    index: 'semantic-code-search',
+  },
+}));
 jest.mock('../../src/mcp_server/tools/read_file');
 jest.mock('../../src/mcp_server/tools/list_symbols_by_query');
 

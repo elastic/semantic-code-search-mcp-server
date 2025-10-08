@@ -27,7 +27,7 @@ describe('listIndices', () => {
   });
 
   it('should mark default when ELASTICSEARCH_INDEX matches the index name', async () => {
-    (elasticsearchConfig.index as any) = 'kibana-code-search-2.0';
+    (elasticsearchConfig as { index: string }).index = 'kibana-code-search-2.0';
     (mockClient.indices.getAlias as jest.Mock).mockResolvedValue({
       'kibana-code-search-2.0': { aliases: { 'kibana-repo': {} } },
       'grafana-code-search': { aliases: { 'grafana-repo': {} } },
@@ -49,7 +49,7 @@ describe('listIndices', () => {
   });
 
   it('should mark default when ELASTICSEARCH_INDEX matches the alias name', async () => {
-    (elasticsearchConfig.index as any) = 'grafana-repo';
+    (elasticsearchConfig as { index: string }).index = 'grafana-repo';
     (mockClient.indices.getAlias as jest.Mock).mockResolvedValue({
       'kibana-code-search-2.0': { aliases: { 'kibana-repo': {} } },
       'grafana-code-search': { aliases: { 'grafana-repo': {} } },
