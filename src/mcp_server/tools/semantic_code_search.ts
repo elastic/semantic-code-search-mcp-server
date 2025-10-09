@@ -3,7 +3,7 @@ import { fromKueryExpression, toElasticsearchQuery } from '../../../libs/es-quer
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { QueryDslQueryContainer } from '@elastic/elasticsearch/lib/api/types';
 
-import { client, elasticsearchConfig } from '../../utils/elasticsearch';
+import { client, elasticsearchConfig, isIndexNotFoundError, formatIndexNotFoundError } from '../../utils/elasticsearch';
 
 /**
  * The Zod schema for the `semanticCodeSearch` tool.
@@ -72,31 +72,42 @@ export async function semanticCodeSearch(params: SemanticCodeSearchParams): Prom
     },
   };
 
-  const response = await client.search({
-    index: index || elasticsearchConfig.index,
-    query: esQuery,
-    from: (page - 1) * size,
-    size: size,
-    _source_excludes: ['code_vector', 'semantic_text'],
-  });
+  try {
+    const response = await client.search({
+      index: index || elasticsearchConfig.index,
+      query: esQuery,
+      from: (page - 1) * size,
+      size: size,
+      _source_excludes: ['code_vector', 'semantic_text'],
+    });
 
-  return {
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify(
-          response.hits.hits.map(hit => {
-            const { type, language, kind, filePath, content } = hit._source as {
-              type: string;
-              language: string;
-              kind: string;
-              filePath: string;
-              content: string;
-            };
-            return { score: hit._score, type, language, kind, filePath, content };
-          })
-        ),
-      },
-    ],
-  };
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            response.hits.hits.map(hit => {
+              const { type, language, kind, filePath, content } = hit._source as {
+                type: string;
+                language: string;
+                kind: string;
+                filePath: string;
+                content: string;
+              };
+              return { score: hit._score, type, language, kind, filePath, content };
+            })
+          ),
+        },
+      ],
+    };
+  } catch (error) {
+    if (isIndexNotFoundError(error)) {
+      const errorMessage = await formatIndexNotFoundError(index || elasticsearchConfig.index);
+      return {
+        content: [{ type: 'text', text: errorMessage }],
+        isError: true,
+      };
+    }
+    throw error;
+  }
 }

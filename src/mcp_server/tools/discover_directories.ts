@@ -3,7 +3,7 @@ import { fromKueryExpression, toElasticsearchQuery } from '../../../libs/es-quer
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { QueryDslQueryContainer } from '@elastic/elasticsearch/lib/api/types';
 import { discoverSignificantDirectories, DirectoryInfo } from '../../elasticsearch/directory_discovery';
-import { client, elasticsearchConfig } from '../../utils/elasticsearch';
+import { client, elasticsearchConfig, isIndexNotFoundError, formatIndexNotFoundError } from '../../utils/elasticsearch';
 
 const DiscoverDirectoriesInput = z.object({
   query: z.string().optional().describe('Semantic search query to filter relevant directories'),
@@ -43,20 +43,31 @@ export async function discoverDirectories(
   
   const esQuery = must.length > 0 ? { bool: { must } } : undefined;
   
-  const directories = await discoverSignificantDirectories(client, index, {
-    query: esQuery,
-    minFiles: params.minFiles,
-    maxResults: params.maxResults
-  });
-  
-  return {
-    content: [
-      {
-        type: 'text',
-        text: formatDirectoryResults(directories)
-      }
-    ]
-  };
+  try {
+    const directories = await discoverSignificantDirectories(client, index, {
+      query: esQuery,
+      minFiles: params.minFiles,
+      maxResults: params.maxResults
+    });
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: formatDirectoryResults(directories)
+        }
+      ]
+    };
+  } catch (error) {
+    if (isIndexNotFoundError(error)) {
+      const errorMessage = await formatIndexNotFoundError(index);
+      return {
+        content: [{ type: 'text', text: errorMessage }],
+        isError: true,
+      };
+    }
+    throw error;
+  }
 }
 
 function formatDirectoryResults(directories: DirectoryInfo[]): string {

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { fromKueryExpression, toElasticsearchQuery } from '../../../libs/es-query';
-import { aggregateBySymbolsAndImports } from '../../utils/elasticsearch';
+import { aggregateBySymbolsAndImports, isIndexNotFoundError, formatIndexNotFoundError, elasticsearchConfig } from '../../utils/elasticsearch';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 
 /**
@@ -82,9 +82,20 @@ export async function listSymbolsByQuery(params: ListSymbolsByQueryParams): Prom
   const ast = fromKueryExpression(kql);
   const dsl = toElasticsearchQuery(ast);
 
-  const results = await aggregateBySymbolsAndImports(dsl, index, size);
+  try {
+    const results = await aggregateBySymbolsAndImports(dsl, index, size);
 
-  return {
-    content: [{ type: 'text', text: JSON.stringify(results) }]
-  };
+    return {
+      content: [{ type: 'text', text: JSON.stringify(results) }]
+    };
+  } catch (error) {
+    if (isIndexNotFoundError(error)) {
+      const errorMessage = await formatIndexNotFoundError(index || elasticsearchConfig.index);
+      return {
+        content: [{ type: 'text', text: errorMessage }],
+        isError: true,
+      };
+    }
+    throw error;
+  }
 }

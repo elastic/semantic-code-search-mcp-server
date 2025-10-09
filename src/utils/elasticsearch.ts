@@ -271,3 +271,150 @@ export async function aggregateBySymbolsAndImports(
 
   return results;
 }
+
+/**
+ * Interface for index information used in error messages
+ */
+export interface IndexInfo {
+  name: string;
+  fileCount: number;
+}
+
+/**
+ * Calculates the Levenshtein distance between two strings
+ * Used for fuzzy matching index names
+ */
+function levenshteinDistance(str1: string, str2: string): number {
+  const matrix: number[][] = [];
+
+  for (let i = 0; i <= str2.length; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= str1.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= str2.length; i++) {
+    for (let j = 1; j <= str1.length; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+
+  return matrix[str2.length][str1.length];
+}
+
+/**
+ * Finds the closest matching index name using Levenshtein distance
+ */
+function findClosestIndex(requestedIndex: string, availableIndices: IndexInfo[]): string | null {
+  if (availableIndices.length === 0) {
+    return null;
+  }
+
+  let bestMatch: { name: string; distance: number } | null = null;
+
+  for (const indexInfo of availableIndices) {
+    const distance = levenshteinDistance(requestedIndex, indexInfo.name);
+    const similarityRatio = 1 - distance / Math.max(requestedIndex.length, indexInfo.name.length);
+
+    // Consider it a match if similarity is > 60%
+    if (similarityRatio > 0.6 && (!bestMatch || distance < bestMatch.distance)) {
+      bestMatch = { name: indexInfo.name, distance };
+    }
+  }
+
+  return bestMatch ? bestMatch.name : null;
+}
+
+/**
+ * Gets information about available indices
+ * Returns a list of index names and their file counts
+ */
+export async function getAvailableIndices(): Promise<IndexInfo[]> {
+  try {
+    const aliasesResponse = await client.indices.getAlias({
+      name: '*-repo',
+    });
+
+    if (!aliasesResponse || Object.keys(aliasesResponse).length === 0) {
+      return [];
+    }
+
+    const indices: IndexInfo[] = [];
+    const indexEntries = Object.entries(aliasesResponse);
+
+    for (const [, indexInfo] of indexEntries) {
+      if (!indexInfo.aliases) continue;
+
+      const repoAliases = Object.keys(indexInfo.aliases).filter(alias => alias.endsWith('-repo'));
+
+      for (const alias of repoAliases) {
+        try {
+          const searchResponse = await client.search({
+            index: alias,
+            size: 0,
+            aggs: {
+              filesIndexed: { cardinality: { field: 'filePath' } },
+            },
+          });
+
+          const aggregations = searchResponse.aggregations as { filesIndexed?: { value?: number } } | undefined;
+          const fileCount = aggregations?.filesIndexed?.value || 0;
+          indices.push({ name: alias, fileCount: Math.round(fileCount) });
+        } catch {
+          // Skip indices we can't query
+          continue;
+        }
+      }
+    }
+
+    return indices;
+  } catch {
+    // If we can't get available indices, return empty array
+    return [];
+  }
+}
+
+/**
+ * Formats a helpful error message when an index is not found
+ */
+export async function formatIndexNotFoundError(requestedIndex: string): Promise<string> {
+  const availableIndices = await getAvailableIndices();
+  
+  let errorMessage = `The index '${requestedIndex}' was not found.`;
+
+  if (availableIndices.length > 0) {
+    errorMessage += '\n\nAvailable indices:\n';
+    for (const indexInfo of availableIndices) {
+      const isDefault = indexInfo.name === elasticsearchConfig.index;
+      errorMessage += `- ${indexInfo.name} (${indexInfo.fileCount.toLocaleString()} files)${isDefault ? ' (Default)' : ''}\n`;
+    }
+
+    // Try to find a close match
+    const closestMatch = findClosestIndex(requestedIndex, availableIndices);
+    if (closestMatch) {
+      errorMessage += `\nDid you mean '${closestMatch}'?`;
+    }
+  } else {
+    errorMessage += '\n\nNo indices found. Please ensure indices are properly configured.';
+  }
+
+  return errorMessage;
+}
+
+/**
+ * Checks if an error is an index_not_found_exception from Elasticsearch
+ */
+export function isIndexNotFoundError(error: unknown): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (error as any)?.meta?.body?.error?.type === 'index_not_found_exception';
+}
