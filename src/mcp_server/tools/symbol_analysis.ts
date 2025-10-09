@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { fromKueryExpression, toElasticsearchQuery } from '../../../libs/es-query';
-import { client } from '../../utils/elasticsearch'; // Assuming client is exported from here
+import { client, isIndexNotFoundError, formatIndexNotFoundError } from '../../utils/elasticsearch'; // Assuming client is exported from here
 import { elasticsearchConfig } from '../../config';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 
@@ -106,87 +106,98 @@ export async function symbolAnalysis(params: SymbolAnalysisParams): Promise<Call
   const ast = fromKueryExpression(kql);
   const dsl = toElasticsearchQuery(ast);
 
-  const response = await client.search<unknown, SymbolAggregation>({
-    index: index || elasticsearchConfig.index,
-    query: dsl,
-    aggs: {
-      files: {
-        terms: {
-          field: 'filePath',
-          size: 1000,
-        },
-        aggs: {
-          kinds: {
-            terms: {
-              field: 'kind',
-              size: 100,
-            },
-            aggs: {
-              startLines: {
-                terms: {
-                  field: 'startLine',
-                  size: 100,
+  try {
+    const response = await client.search<unknown, SymbolAggregation>({
+      index: index || elasticsearchConfig.index,
+      query: dsl,
+      aggs: {
+        files: {
+          terms: {
+            field: 'filePath',
+            size: 1000,
+          },
+          aggs: {
+            kinds: {
+              terms: {
+                field: 'kind',
+                size: 100,
+              },
+              aggs: {
+                startLines: {
+                  terms: {
+                    field: 'startLine',
+                    size: 100,
+                  },
                 },
               },
             },
-          },
-          languages: {
-            terms: {
-              field: 'language',
-              size: 10,
+            languages: {
+              terms: {
+                field: 'language',
+                size: 10,
+              },
             },
           },
         },
       },
-    },
-    size: 0,
-  });
+      size: 0,
+    });
 
-  const report: SymbolAnalysisReport = {
-    primaryDefinitions: [],
-    typeDefinitions: [],
-    executionCallSites: [],
-    importReferences: [],
-    documentation: [],
-  };
+    const report: SymbolAnalysisReport = {
+      primaryDefinitions: [],
+      typeDefinitions: [],
+      executionCallSites: [],
+      importReferences: [],
+      documentation: [],
+    };
 
-  if (response.aggregations) {
-    const files = response.aggregations;
-    for (const bucket of files.files.buckets) {
-      const filePath = bucket.key;
-      const languages = bucket.languages.buckets.map(b => b.key);
-      const kinds: KindInfo[] = bucket.kinds.buckets.map(b => ({
-        kind: b.key,
-        startLines: b.startLines.buckets.map(sl => sl.key),
-      }));
+    if (response.aggregations) {
+      const files = response.aggregations;
+      for (const bucket of files.files.buckets) {
+        const filePath = bucket.key;
+        const languages = bucket.languages.buckets.map(b => b.key);
+        const kinds: KindInfo[] = bucket.kinds.buckets.map(b => ({
+          kind: b.key,
+          startLines: b.startLines.buckets.map(sl => sl.key),
+        }));
 
-      const fileInfo: FileInfo = {
-        filePath,
-        kinds,
-        languages,
-      };
+        const fileInfo: FileInfo = {
+          filePath,
+          kinds,
+          languages,
+        };
 
-      const allKinds = kinds.map(k => k.kind);
+        const allKinds = kinds.map(k => k.kind);
 
-      if (allKinds.includes('function_declaration') || allKinds.includes('class_declaration') || allKinds.includes('lexical_declaration')) {
-        report.primaryDefinitions.push(fileInfo);
-      }
-      if (allKinds.includes('interface_declaration') || allKinds.includes('type_alias_declaration') || allKinds.includes('enum_declaration')) {
-        report.typeDefinitions.push(fileInfo);
-      }
-      if (allKinds.includes('call_expression')) {
-        report.executionCallSites.push(fileInfo);
-      }
-      if (allKinds.includes('import_statement')) {
-        report.importReferences.push(fileInfo);
-      }
-      if (languages.includes('markdown') || allKinds.includes('comment')) {
-        report.documentation.push(fileInfo);
+        if (allKinds.includes('function_declaration') || allKinds.includes('class_declaration') || allKinds.includes('lexical_declaration')) {
+          report.primaryDefinitions.push(fileInfo);
+        }
+        if (allKinds.includes('interface_declaration') || allKinds.includes('type_alias_declaration') || allKinds.includes('enum_declaration')) {
+          report.typeDefinitions.push(fileInfo);
+        }
+        if (allKinds.includes('call_expression')) {
+          report.executionCallSites.push(fileInfo);
+        }
+        if (allKinds.includes('import_statement')) {
+          report.importReferences.push(fileInfo);
+        }
+        if (languages.includes('markdown') || allKinds.includes('comment')) {
+          report.documentation.push(fileInfo);
+        }
       }
     }
-  }
 
-  return {
-    content: [{ type: 'text', text: JSON.stringify(report, null, 2) }]
-  };
+    return {
+      content: [{ type: 'text', text: JSON.stringify(report, null, 2) }]
+    };
+  } catch (error) {
+    if (isIndexNotFoundError(error)) {
+      const errorMessage = await formatIndexNotFoundError(index || elasticsearchConfig.index);
+      return {
+        content: [{ type: 'text', text: errorMessage }],
+        isError: true,
+      };
+    }
+    throw error;
+  }
 }

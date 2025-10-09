@@ -1,6 +1,7 @@
 import { z } from 'zod';
-import { client, elasticsearchConfig } from '../../utils/elasticsearch';
+import { client, elasticsearchConfig, isIndexNotFoundError, formatIndexNotFoundError } from '../../utils/elasticsearch';
 import { Sort } from '@elastic/elasticsearch/lib/api/types';
+import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 
 /**
  * The Zod schema for the `readFile` tool.
@@ -46,10 +47,10 @@ interface ReconstructedChunk {
  *
  * @param {object} params - The parameters for the function.
  * @param {string[]} params.filePaths - An array of one or more absolute file paths to read.
- * @returns {Promise<object>} A promise that resolves to an object containing the reconstructed file content,
+ * @returns {Promise<CallToolResult>} A promise that resolves to a CallToolResult containing the reconstructed file content,
  * formatted for the MCP server.
  */
-export async function readFile({ filePaths, index }: z.infer<typeof readFileSchema>) {
+export async function readFile({ filePaths, index }: z.infer<typeof readFileSchema>): Promise<CallToolResult> {
   const allHits: CodeChunkHit[] = [];
   let searchAfter: (string | number)[] | undefined = undefined;
 
@@ -64,30 +65,41 @@ export async function readFile({ filePaths, index }: z.infer<typeof readFileSche
 
   const { index: defaultIndex } = elasticsearchConfig;
 
-  while (true) {
-    const response = await client.search({
-      index: index || defaultIndex,
-      size: 1000, // Fetch in batches of 1000
-      _source: ['filePath', 'content', 'startLine', 'endLine', 'kind'],
-      query: {
-        bool: {
-          should: filePaths.map(filePath => ({
-            match: { filePath },
-          })),
-          minimum_should_match: 1,
+  try {
+    while (true) {
+      const response = await client.search({
+        index: index || defaultIndex,
+        size: 1000, // Fetch in batches of 1000
+        _source: ['filePath', 'content', 'startLine', 'endLine', 'kind'],
+        query: {
+          bool: {
+            should: filePaths.map(filePath => ({
+              match: { filePath },
+            })),
+            minimum_should_match: 1,
+          },
         },
-      },
-      sort,
-      search_after: searchAfter,
-    });
+        sort,
+        search_after: searchAfter,
+      });
 
-    const hits = response.hits.hits as CodeChunkHit[];
-    if (hits.length === 0) {
-      break; // No more results, exit the loop
+      const hits = response.hits.hits as CodeChunkHit[];
+      if (hits.length === 0) {
+        break; // No more results, exit the loop
+      }
+
+      allHits.push(...hits);
+      searchAfter = hits[hits.length - 1].sort; // Get the sort values of the last document
     }
-
-    allHits.push(...hits);
-    searchAfter = hits[hits.length - 1].sort; // Get the sort values of the last document
+  } catch (error) {
+    if (isIndexNotFoundError(error)) {
+      const errorMessage = await formatIndexNotFoundError(index || defaultIndex);
+      return {
+        content: [{ type: 'text', text: errorMessage }],
+        isError: true,
+      };
+    }
+    throw error;
   }
 
   // Group chunks by filePath

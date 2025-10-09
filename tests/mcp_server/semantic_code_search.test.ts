@@ -1,13 +1,18 @@
 import { semanticCodeSearch } from '../../src/mcp_server/tools/semantic_code_search';
-import { client } from '../../src/utils/elasticsearch';
+import { client, isIndexNotFoundError, formatIndexNotFoundError } from '../../src/utils/elasticsearch';
 
 jest.mock('../../src/utils/elasticsearch', () => ({
   client: {
     search: jest.fn(),
+    indices: {
+      getAlias: jest.fn(),
+    },
   },
   elasticsearchConfig: {
     index: 'test-index',
   },
+  isIndexNotFoundError: jest.fn(),
+  formatIndexNotFoundError: jest.fn(),
 }));
 
 describe('semantic_code_search', () => {
@@ -138,5 +143,49 @@ describe('semantic_code_search', () => {
         index: 'my-test-index',
       })
     );
+  });
+
+  it('should return helpful error message when index is not found', async () => {
+    const indexNotFoundError = {
+      meta: {
+        body: {
+          error: {
+            type: 'index_not_found_exception',
+          },
+        },
+      },
+    };
+
+    (client.search as jest.Mock).mockRejectedValue(indexNotFoundError);
+    (isIndexNotFoundError as jest.Mock).mockReturnValue(true);
+    (formatIndexNotFoundError as jest.Mock).mockResolvedValue(
+      "The index 'nonexistent-index' was not found.\n\nAvailable indices:\n- test-index (100 files)"
+    );
+
+    const result = await semanticCodeSearch({
+      query: 'test query',
+      index: 'nonexistent-index',
+      page: 1,
+      size: 10,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("The index 'nonexistent-index' was not found.");
+    expect(result.content[0].text).toContain('Available indices:');
+  });
+
+  it('should rethrow non-index-not-found errors', async () => {
+    const otherError = new Error('Connection failed');
+
+    (client.search as jest.Mock).mockRejectedValue(otherError);
+    (isIndexNotFoundError as jest.Mock).mockReturnValue(false);
+
+    await expect(
+      semanticCodeSearch({
+        query: 'test query',
+        page: 1,
+        size: 10,
+      })
+    ).rejects.toThrow('Connection failed');
   });
 });
