@@ -13,6 +13,7 @@ import { symbolAnalysis, symbolAnalysisSchema } from './tools/symbol_analysis';
 import { readFile, readFileSchema } from './tools/read_file';
 import { documentSymbols, documentSymbolsSchema } from './tools/document_symbols';
 import { listIndices, listIndicesSchema } from './tools/list_indices';
+import { discoverDirectories, discoverDirectoriesSchema } from './tools/discover_directories';
 
 import {
   createStartChainOfInvestigationHandler,
@@ -101,6 +102,16 @@ export class McpServer {
         inputSchema: listIndicesSchema.shape,
       },
       listIndices
+    );
+
+    const discoverDirectoriesDescription = fs.readFileSync(path.join(__dirname, 'tools/discover_directories.md'), 'utf-8');
+    this.server.registerTool(
+      'discover_directories',
+      {
+        description: discoverDirectoriesDescription,
+        inputSchema: discoverDirectoriesSchema.shape,
+      },
+      discoverDirectories
     );
 
     const chainOfInvestigationWorkflowMarkdown = fs.readFileSync(
