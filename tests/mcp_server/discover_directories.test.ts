@@ -80,7 +80,7 @@ describe('discover_directories', () => {
         aggs: expect.objectContaining({
           directories: expect.objectContaining({
             terms: expect.objectContaining({
-              field: 'directory',
+              field: 'directoryPath',
               size: 10,
               min_doc_count: 5
             })

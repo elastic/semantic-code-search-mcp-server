@@ -41,7 +41,7 @@ export async function discoverSignificantDirectories(
     aggs: {
       directories: {
         terms: {
-          field: 'directory',
+          field: 'directoryPath',
           size: options.maxResults || 50,
           min_doc_count: options.minFiles || 3
         },
