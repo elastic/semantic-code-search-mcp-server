@@ -1,9 +1,9 @@
-import { discoverSignificantDirectories, calculateSignificance } from '../../src/elasticsearch/directory_discovery';
+import { discoverSignificantDirectories } from '../../src/elasticsearch/directory_discovery';
 import { Client } from '@elastic/elasticsearch';
 
 describe('directory_discovery', () => {
   describe('discoverSignificantDirectories', () => {
-    it('should return directories sorted by significance', async () => {
+    it('should return directories sorted by score', async () => {
       const mockClient = {
         search: jest.fn().mockResolvedValue({
           aggregations: {
@@ -16,7 +16,7 @@ describe('directory_discovery', () => {
                   symbol_count: { count: { value: 150 } },
                   languages: { buckets: [{ key: 'typescript', doc_count: 10 }] },
                   top_kinds: { buckets: [{ key: 'function_declaration', doc_count: 50 }] },
-                  sample_files: { buckets: [{ key: 'src/utils/README.md' }, { key: 'src/utils/package.json' }] }
+                  score: { value: 9.555555 }
                 },
                 {
                   key: 'src/components',
@@ -25,7 +25,7 @@ describe('directory_discovery', () => {
                   symbol_count: { count: { value: 200 } },
                   languages: { buckets: [{ key: 'typescript', doc_count: 15 }] },
                   top_kinds: { buckets: [{ key: 'class_declaration', doc_count: 30 }] },
-                  sample_files: { buckets: [] }
+                  score: { value: 7.5555555 }
                 }
               ]
             }
@@ -40,7 +40,7 @@ describe('directory_discovery', () => {
       );
 
       expect(results).toHaveLength(2);
-      expect(results[0].significance).toBeGreaterThan(results[1].significance);
+      expect(results[0].score).toBeGreaterThan(results[1].score);
       expect(results[0].path).toBe('src/utils');
     });
 
@@ -91,42 +91,19 @@ describe('directory_discovery', () => {
             terms: expect.objectContaining({
               field: 'directoryPath',
               size: 20,
-              min_doc_count: 5
+              min_doc_count: 5,
+              order: { score: 'desc' }
+            }),
+            aggs: expect.objectContaining({
+              score: expect.objectContaining({
+                avg: expect.objectContaining({
+                  script: { source: '_score' }
+                })
+              })
             })
           })
         })
       });
-    });
-  });
-
-  describe('calculateSignificance', () => {
-    it('should boost directories with boundary markers', () => {
-      const withMarkers = calculateSignificance({
-        fileCount: 10,
-        symbolCount: 100,
-        languageCount: 1,
-        boundaryMarkerCount: 2
-      });
-
-      const withoutMarkers = calculateSignificance({
-        fileCount: 10,
-        symbolCount: 100,
-        languageCount: 1,
-        boundaryMarkerCount: 0
-      });
-
-      expect(withMarkers).toBeGreaterThan(withoutMarkers + 15);
-    });
-
-    it('should calculate correct significance score', () => {
-      const score = calculateSignificance({
-        fileCount: 10,
-        symbolCount: 100,
-        languageCount: 2,
-        boundaryMarkerCount: 1
-      });
-
-      expect(score).toBe(46);
     });
   });
 });

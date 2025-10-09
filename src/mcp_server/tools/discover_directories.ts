@@ -71,12 +71,7 @@ function formatDirectoryResults(directories: DirectoryInfo[]): string {
     result += `- **Files**: ${dir.fileCount}\n`;
     result += `- **Symbols**: ${dir.symbolCount}\n`;
     result += `- **Languages**: ${dir.languages.join(', ')}\n`;
-    result += `- **Significance Score**: ${dir.significance.toFixed(1)}\n`;
-    
-    if (dir.boundaryMarkerFiles.length > 0) {
-      result += `- **Key Files**: ${dir.boundaryMarkerFiles.join(', ')} ⭐\n`;
-    }
-    
+    result += `- **Score**: ${dir.score.toFixed(1)}\n`;
     result += `\n`;
   }
   

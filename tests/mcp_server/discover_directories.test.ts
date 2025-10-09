@@ -22,7 +22,7 @@ interface MockSearchResponse {
         symbol_count: { count: { value: number } };
         languages: { buckets: Array<{ key: string; doc_count: number }> };
         top_kinds: { buckets: Array<{ key: string; doc_count: number }> };
-        sample_files: { buckets: Array<{ key: string }> };
+        score: { value: number };
       }>;
     };
   };
@@ -45,7 +45,7 @@ describe('discover_directories', () => {
               symbol_count: { count: { value: 150 } },
               languages: { buckets: [{ key: 'typescript', doc_count: 10 }] },
               top_kinds: { buckets: [{ key: 'function_declaration', doc_count: 50 }] },
-              sample_files: { buckets: [{ key: 'src/utils/README.md' }] }
+              score: { value: 9.5 }
             }
           ]
         }
@@ -82,7 +82,15 @@ describe('discover_directories', () => {
             terms: expect.objectContaining({
               field: 'directoryPath',
               size: 10,
-              min_doc_count: 5
+              min_doc_count: 5,
+              order: { score: 'desc' }
+            }),
+            aggs: expect.objectContaining({
+              score: expect.objectContaining({
+                avg: expect.objectContaining({
+                  script: { source: '_score' }
+                })
+              })
             })
           })
         })
@@ -94,7 +102,7 @@ describe('discover_directories', () => {
     expect(output).toContain('src/utils');
     expect(output).toContain('Files**: 10');
     expect(output).toContain('Symbols**: 150');
-    expect(output).toContain('README.md');
+    expect(output).toContain('Score**: 9.5');
   });
 
   it('should handle query without KQL', async () => {

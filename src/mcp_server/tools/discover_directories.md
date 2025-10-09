@@ -51,17 +51,7 @@ Returns a ranked list of directories with:
 - **File count**: Number of files in the directory
 - **Symbol count**: Total symbols indexed from the directory
 - **Languages**: Programming languages used
-- **Significance score**: Calculated importance metric
-- **Key files**: Boundary markers like README.md, package.json ⭐
-
-Directories with README files and package.json are ranked significantly higher.
-
-## Significance Scoring
-The tool ranks directories using multiple factors:
-- File count (more files = more important)
-- Symbol count (more symbols = more content)
-- Language diversity (multiple languages = package boundary)
-- Boundary markers (README, package.json, etc. = very significant)
+- **Score**: Average score of matches
 
 ## Example Output
 ```
@@ -71,15 +61,13 @@ Found 2 significant directories:
 - **Files**: 45
 - **Symbols**: 892
 - **Languages**: typescript, markdown
-- **Significance Score**: 235.2
-- **Key Files**: README.md, package.json, index.ts ⭐
+- **Score**: 9.706930627466733
 
 ## src/platform/packages/shared/kbn-esql-ast
 - **Files**: 38
 - **Symbols**: 756
 - **Languages**: typescript
-- **Significance Score**: 215.6
-- **Key Files**: README.md, package.json ⭐
+- **Score**: 7.088887421771734
 ```
 
 **Note**: The `index` parameter is optional. Only specify it when you need to search a specific index different from the default.
