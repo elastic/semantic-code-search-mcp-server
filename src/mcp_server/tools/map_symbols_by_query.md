@@ -1,33 +1,50 @@
 Query for a structured map of files containing specific symbols, grouped by file path.
 
+## Two Ways to Use This Tool
+
+### 1. Directory Exploration (Recommended after discover_directories)
+Use the `directory` parameter to explore a specific directory:
+```json
+{ "directory": "src/platform/packages/kbn-esql-utils" }
+```
+
+### 2. Advanced Filtering with KQL
+Use the `kql` parameter for complex queries:
+```json
+{ "kql": "language: typescript and kind: function_declaration" }
+```
+
+**Important**: You cannot use both `directory` and `kql` together - choose the one that fits your need.
+
+## Typical Workflow
+1. `discover_directories` → finds "src/platform/packages/kbn-esql-utils"
+2. `map_symbols_by_query` → explore that directory with `{ "directory": "src/platform/packages/kbn-esql-utils" }`
+3. `read_file_from_chunks` → read specific files discovered
+
 ## Use Cases
-- **Post-Discovery Analysis**: After `symbol_analysis` reveals related symbols, use this tool with actual symbol names to see which files contain them
+- **Post-Discovery Analysis**: After `discover_directories` reveals significant directories, use this tool to explore them
 - **Architecture Overview**: Get a file-by-file breakdown showing symbol counts (more symbols = more relevant)
 - **Finding Implementations**: Locate files that use multiple related symbols together
 - **Code Organization**: See how symbols are distributed across the codebase
 
 ## When to Use
+- After using `discover_directories` to find significant directories
 - You have specific symbol names from `symbol_analysis` or `semantic_code_search`
 - You want to see which files are most relevant (contains most related symbols)
 - You need a structured view before diving into full file contents
-- You're mapping the relationship between multiple symbols
 
 ## When NOT to Use
-- You don't know any symbol names yet (use `semantic_code_search` first)
+- You don't know what you're looking for yet (use `semantic_code_search` first)
 - You need the full file content (use `read_file_from_chunks`)
 - You want complete usage information for a single symbol (use `symbol_analysis`)
 
-## Workflow Position
-Typically the **third step** in investigation:
-1. `semantic_code_search` → discover symbols
-2. `symbol_analysis` → understand one key symbol's relationships
-3. **`map_symbols_by_query`** → see which files combine related symbols
-4. `read_file_from_chunks` → read the most relevant files
-
 ## Parameters
-- `kql`: The KQL query string using **actual symbol names** (not generic terms)
-- `index`: (Optional) Specify only when searching across multiple indices. Omit to use the default index.
-- `size`: (Optional) Then number of top level files to return (default: 1000)
+- `directory` (optional): Directory path to explore (e.g., "src/platform/packages/kbn-esql-utils")
+- `kql` (optional): KQL query string for advanced filtering
+- `size` (optional): Maximum files to return (default: 1000)
+- `index` (optional): Specific index to search
+
+**Note**: Must provide either `directory` or `kql`, but not both.
 
 ## KQL Quick Reference
 

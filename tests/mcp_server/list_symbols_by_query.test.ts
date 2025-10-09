@@ -88,3 +88,106 @@ describe('list_symbols_by_query', () => {
     expect(JSON.parse(result.content[0].text as string)).toEqual(mockAggregations);
   });
 });
+
+describe('map_symbols_by_query with directory parameter', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should convert directory to KQL correctly', async () => {
+    const mockAggregations = {
+      'src/platform/packages/kbn-esql/parser.ts': {
+        symbols: {
+          'function_declaration': [
+            { name: 'parseQuery', line: 42 }
+          ]
+        },
+        imports: {}
+      }
+    };
+    (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
+
+    const result = await listSymbolsByQuery({ 
+      directory: 'src/platform/packages/kbn-esql',
+      size: 1000 
+    });
+
+    // Verify the aggregateBySymbolsAndImports was called with correct DSL
+    expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bool: expect.objectContaining({
+          should: expect.arrayContaining([
+            expect.objectContaining({
+              query_string: expect.objectContaining({
+                fields: ['filePath'],
+                query: 'src\\/platform\\/packages\\/kbn\\-esql\\/*'
+              })
+            })
+          ])
+        })
+      }),
+      undefined,
+      1000
+    );
+
+    expect(JSON.parse(result.content[0].text as string)).toEqual(mockAggregations);
+  });
+  
+  it('should remove trailing slashes from directory', async () => {
+    (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue({});
+    
+    await listSymbolsByQuery({ 
+      directory: 'src/utils/',
+      size: 1000 
+    });
+
+    expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bool: expect.objectContaining({
+          should: expect.arrayContaining([
+            expect.objectContaining({
+              query_string: expect.objectContaining({
+                fields: ['filePath'],
+                query: 'src\\/utils\\/*'
+              })
+            })
+          ])
+        })
+      }),
+      undefined,
+      1000
+    );
+  });
+  
+  it('should throw error when both directory and kql provided', async () => {
+    await expect(
+      listSymbolsByQuery({ 
+        directory: 'src', 
+        kql: 'language: typescript',
+        size: 1000 
+      })
+    ).rejects.toThrow('Cannot use both');
+  });
+  
+  it('should throw error when neither directory nor kql provided', async () => {
+    await expect(
+      listSymbolsByQuery({ size: 1000 })
+    ).rejects.toThrow('Must provide either');
+  });
+
+  it('should work with custom index', async () => {
+    (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue({});
+    
+    await listSymbolsByQuery({ 
+      directory: 'src/utils',
+      index: 'custom-index',
+      size: 1000 
+    });
+
+    expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith(
+      expect.anything(),
+      'custom-index',
+      1000
+    );
+  });
+});
