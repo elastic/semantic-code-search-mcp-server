@@ -1,4 +1,4 @@
-import { listSymbolsByQuery } from '../../src/mcp_server/tools/list_symbols_by_query';
+import { mapSymbolsByQuery } from '../../src/mcp_server/tools/map_symbols_by_query';
 import { aggregateBySymbolsAndImports } from '../../src/utils/elasticsearch';
 
 jest.mock('../../src/utils/elasticsearch', () => ({
@@ -8,7 +8,7 @@ jest.mock('../../src/utils/elasticsearch', () => ({
   },
 }));
 
-describe('list_symbols_by_query', () => {
+describe('map_symbols_by_query', () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -51,7 +51,7 @@ describe('list_symbols_by_query', () => {
     };
     (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
 
-    const result = await listSymbolsByQuery({ kql: 'language: typescript', size: 1000 });
+    const result = await mapSymbolsByQuery({ kql: 'language: typescript', size: 1000 });
 
     expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith(
       {
@@ -77,7 +77,7 @@ describe('list_symbols_by_query', () => {
     const mockAggregations = {};
     (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
 
-    const result = await listSymbolsByQuery({
+    const result = await mapSymbolsByQuery({
       kql: 'language: typescript',
       index: 'my-index',
       size: 1000,
@@ -147,7 +147,7 @@ describe('list_symbols_by_query', () => {
     };
     (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
 
-    const result = await listSymbolsByQuery({ kql: 'language: typescript', size: 1000 });
+    const result = await mapSymbolsByQuery({ kql: 'language: typescript', size: 1000 });
 
     const parsedResult = JSON.parse(result.content[0].text as string);
     expect(parsedResult['src/example.ts'].exports).toEqual({
@@ -183,7 +183,7 @@ describe('map_symbols_by_query with directory parameter', () => {
     };
     (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
 
-    const result = await listSymbolsByQuery({ 
+    const result = await mapSymbolsByQuery({ 
       directory: 'src/platform/packages/kbn-esql',
       size: 1000 
     });
@@ -212,7 +212,7 @@ describe('map_symbols_by_query with directory parameter', () => {
   it('should remove trailing slashes from directory', async () => {
     (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue({});
     
-    await listSymbolsByQuery({ 
+    await mapSymbolsByQuery({ 
       directory: 'src/utils/',
       size: 1000 
     });
@@ -237,7 +237,7 @@ describe('map_symbols_by_query with directory parameter', () => {
   
   it('should throw error when both directory and kql provided', async () => {
     await expect(
-      listSymbolsByQuery({ 
+      mapSymbolsByQuery({ 
         directory: 'src', 
         kql: 'language: typescript',
         size: 1000 
@@ -247,14 +247,14 @@ describe('map_symbols_by_query with directory parameter', () => {
   
   it('should throw error when neither directory nor kql provided', async () => {
     await expect(
-      listSymbolsByQuery({ size: 1000 })
+      mapSymbolsByQuery({ size: 1000 })
     ).rejects.toThrow('Must provide either');
   });
 
   it('should work with custom index', async () => {
     (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue({});
     
-    await listSymbolsByQuery({ 
+    await mapSymbolsByQuery({ 
       directory: 'src/utils',
       index: 'custom-index',
       size: 1000 

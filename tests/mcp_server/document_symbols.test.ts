@@ -1,6 +1,6 @@
 import { documentSymbols } from '../../src/mcp_server/tools/document_symbols';
 import * as readFileTool from '../../src/mcp_server/tools/read_file';
-import * as listSymbolsByQueryTool from '../../src/mcp_server/tools/list_symbols_by_query';
+import * as mapSymbolsByQueryTool from '../../src/mcp_server/tools/map_symbols_by_query';
 
 jest.mock('../../src/utils/elasticsearch', () => ({
   elasticsearchConfig: {
@@ -8,7 +8,7 @@ jest.mock('../../src/utils/elasticsearch', () => ({
   },
 }));
 jest.mock('../../src/mcp_server/tools/read_file');
-jest.mock('../../src/mcp_server/tools/list_symbols_by_query');
+jest.mock('../../src/mcp_server/tools/map_symbols_by_query');
 
 describe('document_symbols', () => {
   it('should return a list of important symbols to document', async () => {
@@ -31,7 +31,7 @@ describe('document_symbols', () => {
       }],
     });
 
-    (listSymbolsByQueryTool.listSymbolsByQuery as jest.Mock).mockResolvedValue({
+    (mapSymbolsByQueryTool.mapSymbolsByQuery as jest.Mock).mockResolvedValue({
       content: [{
         type: 'text',
         text: JSON.stringify({

@@ -1,6 +1,6 @@
 ## Problem Statement
 
-I would like to change the output from `list_symbols_by_query` so the `symbols` and `imports` are grouped by `kind`. 
+I would like to change the output from `map_symbols_by_query` so the `symbols` and `imports` are grouped by `kind`. 
 
 ## Current Behavior
 

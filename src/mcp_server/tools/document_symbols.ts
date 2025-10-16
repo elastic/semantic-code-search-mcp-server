@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { readFile } from './read_file';
-import { listSymbolsByQuery } from './list_symbols_by_query';
+import { mapSymbolsByQuery } from './map_symbols_by_query';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 
 /**
@@ -44,7 +44,7 @@ export async function documentSymbols(params: DocumentSymbolsParams): Promise<Ca
     : '';
 
   // 2. Get all the symbols in the file
-  const allSymbolsResult = await listSymbolsByQuery({ kql: `filePath: "${filePath}"`, index, size: 1000 });
+  const allSymbolsResult = await mapSymbolsByQuery({ kql: `filePath: "${filePath}"`, index, size: 1000 });
   
   // If there's an error, pass it through
   if (allSymbolsResult.isError) {
