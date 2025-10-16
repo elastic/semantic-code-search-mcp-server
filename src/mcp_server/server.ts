@@ -53,9 +53,6 @@ export class McpServer {
       semanticCodeSearch
     );
 
-    /**
-     * `list_symbols_by_query` was renamed to `map_symbols_by_query`
-     */
     this.server.registerTool(
       'map_symbols_by_query',
       {
