@@ -111,9 +111,15 @@ export interface ImportInfo {
   symbols?: string[];
 }
 
+export interface ExportInfo {
+  name: string;
+  target?: string;
+}
+
 export interface FileSymbolsAndImports {
   symbols: Record<string, SymbolInfo[]>;
   imports: Record<string, ImportInfo[]>;
+  exports: Record<string, ExportInfo[]>;
 }
 
 interface FileAggregationWithImports {
@@ -147,6 +153,23 @@ interface FileAggregationWithImports {
               }[];
             };
             symbols: {
+              buckets: {
+                key: string;
+              }[];
+            };
+          }[];
+        };
+      };
+      exports: {
+        names: {
+          buckets: {
+            key: string;
+            type: {
+              buckets: {
+                key: string;
+              }[];
+            };
+            target: {
               buckets: {
                 key: string;
               }[];
@@ -227,6 +250,33 @@ export async function aggregateBySymbolsAndImports(
               },
             },
           },
+          exports: {
+            nested: {
+              path: 'exports',
+            },
+            aggs: {
+              names: {
+                terms: {
+                  field: 'exports.name',
+                  size: 1000,
+                },
+                aggs: {
+                  type: {
+                    terms: {
+                      field: 'exports.type',
+                      size: 1,
+                    },
+                  },
+                  target: {
+                    terms: {
+                      field: 'exports.target',
+                      size: 1,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -265,7 +315,23 @@ export async function aggregateBySymbolsAndImports(
           acc[type].push(rest);
           return acc;
         }, {} as Record<string, ImportInfo[]>);
-      results[filePath] = { symbols, imports };
+
+      const exports = bucket.exports.names.buckets
+        .map(b => ({
+          name: b.key,
+          type: b.type.buckets[0]?.key,
+          target: b.target.buckets[0]?.key,
+        }))
+        .reduce((acc: Record<string, ExportInfo[]>, { type, name, target }) => {
+          if (!type) return acc;
+          if (!acc[type]) {
+            acc[type] = [];
+          }
+          acc[type].push({ name, ...(target && { target }) });
+          return acc;
+        }, {} as Record<string, ExportInfo[]>);
+
+      results[filePath] = { symbols, imports, exports };
     }
   }
 
