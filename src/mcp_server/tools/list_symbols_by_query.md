@@ -87,7 +87,7 @@ language: python and not filePath: *test*
 ```
 
 ## Output Format
-Returns file paths mapped to symbols and imports:
+Returns file paths mapped to symbols, imports, and exports:
 
 ```json
 {
@@ -111,6 +111,15 @@ Returns file paths mapped to symbols and imports:
           "path": "@kbn/core-plugins-contracts-server",
           "symbols": ["PluginsServiceSetup", "PluginsServiceStart"]
         }
+      ]
+    },
+    "exports": {
+      "named": [
+        { "name": "createServiceMock" },
+        { "name": "createSetupContractMock" }
+      ],
+      "default": [
+        { "name": "PluginsServiceMock" }
       ]
     }
   }
