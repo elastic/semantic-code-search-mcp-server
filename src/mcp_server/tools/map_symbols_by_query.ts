@@ -4,18 +4,18 @@ import { aggregateBySymbolsAndImports, isIndexNotFoundError, formatIndexNotFound
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 
 /**
- * The Zod schema for the `listSymbolsByQuery` tool.
+ * The Zod schema for the `mapSymbolsByQuery` tool.
  * @property {string} kql - The KQL query string.
  * @property {string} directory - Directory path to explore.
  */
-export const listSymbolsByQuerySchema = z.object({
+export const mapSymbolsByQuerySchema = z.object({
   kql: z.string().optional().describe('KQL query string for filtering (e.g., "language: typescript and kind: function_declaration")'),
   directory: z.string().optional().describe('Directory path to explore (e.g., "src/platform/packages/kbn-esql-utils"). Convenience wrapper for filePath filtering.'),
   index: z.string().optional().describe('The Elasticsearch index to search.'),
   size: z.number().optional().describe('The number of top level files to return').default(1000),
 });
 
-export type ListSymbolsByQueryParams = z.infer<typeof listSymbolsByQuerySchema>;
+export type MapSymbolsByQueryParams = z.infer<typeof mapSymbolsByQuerySchema>;
 
 /**
  * Converts a directory path to a KQL query string.
@@ -36,7 +36,7 @@ function buildKqlFromDirectory(directory: string): string {
  * @returns The final KQL query string
  * @throws Error if parameters are invalid or conflicting
  */
-function validateAndBuildQuery(input: z.infer<typeof listSymbolsByQuerySchema>): string {
+function validateAndBuildQuery(input: z.infer<typeof mapSymbolsByQuerySchema>): string {
   // Check for conflicting parameters
   if (input.directory && input.kql) {
     throw new Error(
@@ -64,16 +64,16 @@ function validateAndBuildQuery(input: z.infer<typeof listSymbolsByQuerySchema>):
 }
 
 /**
- * Lists symbols that match a given KQL query or directory path.
+ * Maps symbols that match a given KQL query or directory path.
  *
  * This function uses the `aggregateBySymbolsAndImports` function to perform the
  * aggregation.
  *
- * @param {ListSymbolsByQueryParams} params - The parameters for the function.
+ * @param {MapSymbolsByQueryParams} params - The parameters for the function.
  * @returns {Promise<CallToolResult>} A promise that resolves to a
  * `CallToolResult` object containing the aggregated symbols.
  */
-export async function listSymbolsByQuery(params: ListSymbolsByQueryParams): Promise<CallToolResult> {
+export async function mapSymbolsByQuery(params: MapSymbolsByQueryParams): Promise<CallToolResult> {
   const { index, size } = params;
   
   // Validate and build KQL query

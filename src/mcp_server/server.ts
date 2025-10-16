@@ -8,7 +8,7 @@ import express from 'express';
 import { randomUUID } from 'crypto';
 
 import { semanticCodeSearch, semanticCodeSearchSchema } from './tools/semantic_code_search';
-import { listSymbolsByQuery, listSymbolsByQuerySchema } from './tools/list_symbols_by_query';
+import { mapSymbolsByQuery, mapSymbolsByQuerySchema } from './tools/map_symbols_by_query';
 import { symbolAnalysis, symbolAnalysisSchema } from './tools/symbol_analysis';
 import { readFile, readFileSchema } from './tools/read_file';
 import { documentSymbols, documentSymbolsSchema } from './tools/document_symbols';
@@ -60,9 +60,9 @@ export class McpServer {
       'map_symbols_by_query',
       {
         description: mapSymbolsByQueryDescription,
-        inputSchema: listSymbolsByQuerySchema.shape,
+        inputSchema: mapSymbolsByQuerySchema.shape,
       },
-      listSymbolsByQuery
+      mapSymbolsByQuery
     );
 
     this.server.registerTool(

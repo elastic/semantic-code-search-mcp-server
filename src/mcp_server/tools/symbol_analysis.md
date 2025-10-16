@@ -6,7 +6,7 @@ Precision tool for step 2 of "chain of investigation" - analyze specific symbols
 - **Impact**: Find all affected locations for changes
 
 ## Workflow
-1. Find symbols via `semantic_code_search` or `list_symbols_by_query`
+1. Find symbols via `semantic_code_search` or `map_symbols_by_query`
 2. Pass exact symbol name to `symbol_analysis` for complete connections
 
 ## Parameters
