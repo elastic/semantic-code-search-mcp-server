@@ -147,7 +147,7 @@ describe('map_symbols_by_query', () => {
     };
     (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
 
-    const result = await listSymbolsByQuery({ kql: 'language: typescript', size: 1000 });
+    const result = await mapSymbolsByQuery({ kql: 'language: typescript', size: 1000 });
 
     const parsedResult = JSON.parse(result.content[0].text as string);
     expect(parsedResult['src/example.ts'].exports).toEqual({
