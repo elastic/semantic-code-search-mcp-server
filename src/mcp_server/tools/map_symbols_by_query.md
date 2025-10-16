@@ -124,6 +124,7 @@ Returns a JSON object where:
 - **Values**:
   - `symbols`: Grouped by kind (function.call, variable.name, etc.) with line numbers
   - `imports`: Module imports with their symbols
+  - `exports`: Grouped by type (named, default, namespace) with optional target
 
 Files with **more symbol matches** are typically more relevant to your investigation.
 
@@ -145,6 +146,18 @@ Files with **more symbol matches** are typically more relevant to your investiga
           "path": "@kbn/types",
           "symbols": ["LensPublicCallbacks"]
         }
+      ]
+    },
+    "exports": {
+      "named": [
+        { "name": "myFunction" },
+        { "name": "MyClass" }
+      ],
+      "default": [
+        { "name": "UserService" }
+      ],
+      "namespace": [
+        { "name": "*", "target": "src/types" }
       ]
     }
   }

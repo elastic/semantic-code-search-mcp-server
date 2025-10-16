@@ -32,6 +32,21 @@ describe('map_symbols_by_query', () => {
             },
           ],
         },
+        exports: {
+          named: [
+            {
+              name: 'myFunction',
+            },
+            {
+              name: 'MyClass',
+            },
+          ],
+          default: [
+            {
+              name: 'UserService',
+            },
+          ],
+        },
       },
     };
     (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
@@ -86,6 +101,67 @@ describe('map_symbols_by_query', () => {
     );
 
     expect(JSON.parse(result.content[0].text as string)).toEqual(mockAggregations);
+  });
+
+  it('should return exports with all three types (named, default, namespace)', async () => {
+    const mockAggregations = {
+      'src/example.ts': {
+        symbols: {
+          function: [
+            {
+              name: 'exampleFunction',
+              line: 42,
+            },
+          ],
+        },
+        imports: {
+          module: [
+            {
+              path: './utils',
+              symbols: ['helper'],
+            },
+          ],
+        },
+        exports: {
+          named: [
+            {
+              name: 'myFunction',
+            },
+            {
+              name: 'MyClass',
+            },
+          ],
+          default: [
+            {
+              name: 'UserService',
+            },
+          ],
+          namespace: [
+            {
+              name: '*',
+              target: 'src/types',
+            },
+          ],
+        },
+      },
+    };
+    (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
+
+    const result = await listSymbolsByQuery({ kql: 'language: typescript', size: 1000 });
+
+    const parsedResult = JSON.parse(result.content[0].text as string);
+    expect(parsedResult['src/example.ts'].exports).toEqual({
+      named: [
+        { name: 'myFunction' },
+        { name: 'MyClass' },
+      ],
+      default: [
+        { name: 'UserService' },
+      ],
+      namespace: [
+        { name: '*', target: 'src/types' },
+      ],
+    });
   });
 });
 
