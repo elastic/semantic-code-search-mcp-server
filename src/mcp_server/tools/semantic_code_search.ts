@@ -128,7 +128,7 @@ export async function semanticCodeSearch(params: SemanticCodeSearchParams): Prom
           type: 'text',
           text: JSON.stringify({
             hits: response.hits.hits.map(hit => {
-              const { type, language, kind, filePath, content } = hit._source as CodeChunkDoc;
+              const { type, language, kind, filePath, content } = hit._source!;
               return { score: hit._score, type, language, kind, filePath, content };
             }),
             max_score: response.hits.max_score,
