@@ -5,6 +5,14 @@ import { QueryDslQueryContainer } from '@elastic/elasticsearch/lib/api/types';
 
 import { client, elasticsearchConfig, isIndexNotFoundError, formatIndexNotFoundError } from '../../utils/elasticsearch';
 
+interface CodeChunkDoc {
+  type: string;
+  language: string;
+  kind: string;
+  filePath: string;
+  content: string;
+}
+
 /**
  * The Zod schema for the `semanticCodeSearch` tool.
  * @property {string} [query] - The semantic query string.
@@ -79,39 +87,40 @@ export async function semanticCodeSearch(params: SemanticCodeSearchParams): Prom
   };
 
   try {
-    let response;
+    // The standard semantic search query with pagination
+    const standardQuery = {
+      query: baseBoolQuery,
+      from: (page - 1) * size,
+    };
 
-    if (use_reranker) {
-      // Use text_similarity_reranker for higher quality ranking
-      response = await client.search({
-        index: index || elasticsearchConfig.index,
-        size: size,
-        retriever: {
-          text_similarity_reranker: {
-            retriever: {
-              standard: {
-                query: baseBoolQuery,
-              },
+    // The reranker query that wraps the standard query
+    const rerankerQuery = {
+      retriever: {
+        text_similarity_reranker: {
+          retriever: {
+            standard: {
+              query: baseBoolQuery,
             },
-            field: 'semantic_text',
-            inference_id: elasticsearchConfig.rerankerInferenceId,
-            inference_text: query as string, // query is guaranteed to be defined when use_reranker is true
-            rank_window_size: 100,
-            min_score: 0.5,
           },
+          field: 'semantic_text',
+          inference_id: elasticsearchConfig.rerankerInferenceId,
+          inference_text: query as string, // query is guaranteed to be defined when use_reranker is true
+          rank_window_size: 100,
+          min_score: 0.5,
         },
-        _source_excludes: ['code_vector', 'semantic_text'],
-      });
-    } else {
-      // Standard query path
-      response = await client.search({
-        index: index || elasticsearchConfig.index,
-        query: baseBoolQuery,
-        from: (page - 1) * size,
-        size: size,
-        _source_excludes: ['code_vector', 'semantic_text'],
-      });
-    }
+      },
+    };
+
+    // Constructing the search parameters based on whether reranking is used
+    const params = {
+      index: index || elasticsearchConfig.index,
+      size,
+      ...(use_reranker ? rerankerQuery : standardQuery),
+      _source_excludes: ['code_vector', 'semantic_text'],
+    };
+
+    // Executing the search query
+    const response = await client.search<CodeChunkDoc>(params);
 
     return {
       content: [
@@ -119,13 +128,7 @@ export async function semanticCodeSearch(params: SemanticCodeSearchParams): Prom
           type: 'text',
           text: JSON.stringify({
             hits: response.hits.hits.map(hit => {
-              const { type, language, kind, filePath, content } = hit._source as {
-                type: string;
-                language: string;
-                kind: string;
-                filePath: string;
-                content: string;
-              };
+              const { type, language, kind, filePath, content } = hit._source as CodeChunkDoc;
               return { score: hit._score, type, language, kind, filePath, content };
             }),
             max_score: response.hits.max_score,
