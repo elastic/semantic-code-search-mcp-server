@@ -26,6 +26,12 @@
 - `query`: The semantic seach phrase based on the concept
 - `kql`: The KQL query string using **actual symbol names** (not generic terms)
 - `index`: (Optional) Specify only when searching across multiple indices. Omit to use the default index.
+- `use_reranker`: (Optional) Boolean flag to enable Elastic's text-similarity reranker for higher quality ranking. Requires a semantic `query`. Default: `false`
+
+**Reranker Configuration:**
+- The reranker inference ID can be configured via the `ELASTICSEARCH_RERANKER_INFERENCE_ID` environment variable
+- Default inference ID: `.rerank-v1-elasticsearch`
+- When enabled, the reranker provides enhanced relevance scoring at the cost of additional processing
 
 ---
 

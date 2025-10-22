@@ -10,6 +10,7 @@ jest.mock('../../src/utils/elasticsearch', () => ({
   },
   elasticsearchConfig: {
     index: 'test-index',
+    rerankerInferenceId: '.rerank-v1-elasticsearch',
   },
   isIndexNotFoundError: jest.fn(),
   formatIndexNotFoundError: jest.fn(),
@@ -30,6 +31,7 @@ describe('semantic_code_search', () => {
     (client.search as jest.Mock).mockResolvedValue({
       hits: {
         hits: [],
+        max_score: null,
       },
     });
 
@@ -101,6 +103,7 @@ describe('semantic_code_search', () => {
     (client.search as jest.Mock).mockResolvedValue({
       hits: {
         hits: mockHits,
+        max_score: 1.23,
       },
     });
 
@@ -110,7 +113,9 @@ describe('semantic_code_search', () => {
       size: 10,
     });
 
-    const expectedContent = [
+    const parsedResult = JSON.parse(result.content[0].text as string);
+    
+    expect(parsedResult.hits).toEqual([
       {
         score: 1.23,
         type: 'code',
@@ -119,15 +124,15 @@ describe('semantic_code_search', () => {
         filePath: 'src/index.ts',
         content: 'f()',
       },
-    ];
-
-    expect(JSON.parse(result.content[0].text as string)).toEqual(expectedContent);
+    ]);
+    expect(parsedResult.max_score).toBe(1.23);
   });
 
   it('should use the provided index when searching', async () => {
     (client.search as jest.Mock).mockResolvedValue({
       hits: {
         hits: [],
+        max_score: null,
       },
     });
 
@@ -187,5 +192,143 @@ describe('semantic_code_search', () => {
         size: 10,
       })
     ).rejects.toThrow('Connection failed');
+  });
+
+  it('should throw error when use_reranker is true but no query is provided', async () => {
+    await expect(
+      semanticCodeSearch({
+        kql: 'language: typescript',
+        use_reranker: true,
+        page: 1,
+        size: 10,
+      })
+    ).rejects.toThrow('A semantic query is required when using the reranker.');
+  });
+
+  it('should construct reranker query when use_reranker is true', async () => {
+    (client.search as jest.Mock).mockResolvedValue({
+      hits: {
+        hits: [],
+        max_score: null,
+      },
+    });
+
+    await semanticCodeSearch({
+      query: 'test query',
+      kql: 'language: typescript',
+      use_reranker: true,
+      page: 1,
+      size: 25,
+    });
+
+    expect(client.search).toHaveBeenCalledWith({
+      index: 'test-index',
+      size: 25,
+      retriever: {
+        text_similarity_reranker: {
+          retriever: {
+            standard: {
+              query: {
+                bool: {
+                  must: [
+                    {
+                      semantic: {
+                        field: 'semantic_text',
+                        query: 'test query',
+                      },
+                    },
+                    {
+                      bool: {
+                        minimum_should_match: 1,
+                        should: [
+                          {
+                            match: {
+                              language: 'typescript',
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                  should: [
+                    {
+                      term: {
+                        language: {
+                          value: 'markdown',
+                          boost: 2,
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          field: 'semantic_text',
+          inference_id: '.rerank-v1-elasticsearch',
+          inference_text: 'test query',
+          rank_window_size: 100,
+          min_score: 0.5,
+        },
+      },
+      _source_excludes: ['code_vector', 'semantic_text'],
+    });
+  });
+
+  it('should use reranker inference ID from config', async () => {
+    (client.search as jest.Mock).mockResolvedValue({
+      hits: {
+        hits: [],
+        max_score: null,
+      },
+    });
+
+    await semanticCodeSearch({
+      query: 'test query',
+      use_reranker: true,
+      page: 1,
+      size: 10,
+    });
+
+    expect(client.search).toHaveBeenCalledWith(
+      expect.objectContaining({
+        retriever: expect.objectContaining({
+          text_similarity_reranker: expect.objectContaining({
+            inference_id: '.rerank-v1-elasticsearch',
+          }),
+        }),
+      })
+    );
+  });
+
+  it('should include max_score in response', async () => {
+    const mockHits = [
+      {
+        _score: 0.95,
+        _source: {
+          type: 'code',
+          language: 'typescript',
+          kind: 'function_declaration',
+          filePath: 'src/test.ts',
+          content: 'test()',
+        },
+      },
+    ];
+
+    (client.search as jest.Mock).mockResolvedValue({
+      hits: {
+        hits: mockHits,
+        max_score: 0.95,
+      },
+    });
+
+    const result = await semanticCodeSearch({
+      query: 'test query',
+      page: 1,
+      size: 10,
+    });
+
+    const parsedResult = JSON.parse(result.content[0].text as string);
+    expect(parsedResult.max_score).toBe(0.95);
   });
 });

@@ -8,4 +8,5 @@ export const elasticsearchConfig = {
   password: process.env.ELASTICSEARCH_PASSWORD,
   apiKey: process.env.ELASTICSEARCH_API_KEY,
   index: process.env.ELASTICSEARCH_INDEX || 'semantic-code-search',
+  rerankerInferenceId: process.env.ELASTICSEARCH_RERANKER_INFERENCE_ID || '.rerank-v1-elasticsearch',
 };
