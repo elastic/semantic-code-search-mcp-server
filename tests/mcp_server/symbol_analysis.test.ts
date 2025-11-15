@@ -10,7 +10,6 @@ jest.mock('../../src/utils/elasticsearch', () => ({
   },
 }));
 
-
 describe('symbol_analysis', () => {
   afterEach(() => {
     jest.clearAllMocks();

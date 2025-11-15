@@ -20,9 +20,7 @@ export type StartChainOfInvestigationParams = z.infer<typeof startChainOfInvesti
  * @returns An async function that takes the prompt parameters and returns a `PromptResult`.
  */
 export function createStartChainOfInvestigationHandler(workflow: string) {
-  return async function startChainOfInvestigation(
-    params: StartChainOfInvestigationParams
-  ): Promise<GetPromptResult> {
+  return async function startChainOfInvestigation(params: StartChainOfInvestigationParams): Promise<GetPromptResult> {
     const { task } = params;
     const responseText = `Use the workflow below to satisfy this task:\n\n${task}\n\n${workflow}`;
     return {

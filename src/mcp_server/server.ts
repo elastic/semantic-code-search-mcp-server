@@ -40,9 +40,15 @@ export class McpServer {
   }
 
   private registerTools() {
-    const semanticCodeSearchDescription = fs.readFileSync(path.join(__dirname, 'tools/semantic_code_search.md'), 'utf-8');
+    const semanticCodeSearchDescription = fs.readFileSync(
+      path.join(__dirname, 'tools/semantic_code_search.md'),
+      'utf-8'
+    );
     const symbolAnalysisDescription = fs.readFileSync(path.join(__dirname, 'tools/symbol_analysis.md'), 'utf-8');
-    const mapSymbolsByQueryDescription = fs.readFileSync(path.join(__dirname, 'tools/map_symbols_by_query.md'), 'utf-8');
+    const mapSymbolsByQueryDescription = fs.readFileSync(
+      path.join(__dirname, 'tools/map_symbols_by_query.md'),
+      'utf-8'
+    );
 
     this.server.registerTool(
       'semantic_code_search',
@@ -101,7 +107,10 @@ export class McpServer {
       listIndices
     );
 
-    const discoverDirectoriesDescription = fs.readFileSync(path.join(__dirname, 'tools/discover_directories.md'), 'utf-8');
+    const discoverDirectoriesDescription = fs.readFileSync(
+      path.join(__dirname, 'tools/discover_directories.md'),
+      'utf-8'
+    );
     this.server.registerTool(
       'discover_directories',
       {
@@ -116,11 +125,11 @@ export class McpServer {
       'utf-8'
     );
 
-
     this.server.registerPrompt(
       'StartInvestigation',
       {
-        description: 'This prompt helps you start a "chain of investigation" to understand a codebase and accomplish a task. It follows a structured workflow that leverages the available tools to explore the code, analyze its components, and formulate a plan.',
+        description:
+          'This prompt helps you start a "chain of investigation" to understand a codebase and accomplish a task. It follows a structured workflow that leverages the available tools to explore the code, analyze its components, and formulate a plan.',
         argsSchema: startChainOfInvestigationSchema.shape,
       },
       createStartChainOfInvestigationHandler(chainOfInvestigationWorkflowMarkdown)

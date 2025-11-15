@@ -15,9 +15,10 @@ describe('document_symbols', () => {
     const filePath = 'src/mcp_server/tools/semantic_code_search.ts';
 
     (readFileTool.readFile as jest.Mock).mockResolvedValue({
-      content: [{
-        type: 'text',
-        text: `
+      content: [
+        {
+          type: 'text',
+          text: `
           const semanticCodeSearchSchema = z.object({});
           async function semanticCodeSearch(params: any) {
             const { query, kql, page, size } = params;
@@ -28,20 +29,23 @@ describe('document_symbols', () => {
             const response = await client.search({});
           }
         `,
-      }],
+        },
+      ],
     });
 
     (mapSymbolsByQueryTool.mapSymbolsByQuery as jest.Mock).mockResolvedValue({
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          [filePath]: [
-            { name: 'semanticCodeSearchSchema', kind: 'variable', line: 10 },
-            { name: 'semanticCodeSearch', kind: 'function', line: 20 },
-            { name: 'someOtherSymbol', kind: 'variable', line: 30 },
-          ],
-        }),
-      }],
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            [filePath]: [
+              { name: 'semanticCodeSearchSchema', kind: 'variable', line: 10 },
+              { name: 'semanticCodeSearch', kind: 'function', line: 20 },
+              { name: 'someOtherSymbol', kind: 'variable', line: 30 },
+            ],
+          }),
+        },
+      ],
     });
 
     const result = await documentSymbols({ filePath });

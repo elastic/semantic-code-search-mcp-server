@@ -45,11 +45,11 @@ describe('discover_directories', () => {
               symbol_count: { count: { value: 150 } },
               languages: { buckets: [{ key: 'typescript', doc_count: 10 }] },
               top_kinds: { buckets: [{ key: 'function_declaration', doc_count: 50 }] },
-              score: { value: 9.5 }
-            }
-          ]
-        }
-      }
+              score: { value: 9.5 },
+            },
+          ],
+        },
+      },
     };
     mockClient.search.mockResolvedValue(mockResponse as never);
 
@@ -57,7 +57,7 @@ describe('discover_directories', () => {
       query: 'authentication utilities',
       kql: 'language: typescript',
       minFiles: 5,
-      maxResults: 10
+      maxResults: 10,
     } as Parameters<typeof discoverDirectories>[0]);
 
     expect(mockClient.search).toHaveBeenCalledWith(
@@ -69,12 +69,12 @@ describe('discover_directories', () => {
               {
                 semantic: {
                   field: 'semantic_text',
-                  query: 'authentication utilities'
-                }
+                  query: 'authentication utilities',
+                },
               },
-              expect.any(Object)
-            ]
-          }
+              expect.any(Object),
+            ],
+          },
         },
         size: 0,
         aggs: expect.objectContaining({
@@ -83,17 +83,17 @@ describe('discover_directories', () => {
               field: 'directoryPath',
               size: 10,
               min_doc_count: 5,
-              order: { score: 'desc' }
+              order: { score: 'desc' },
             }),
             aggs: expect.objectContaining({
               score: expect.objectContaining({
                 avg: expect.objectContaining({
-                  script: { source: '_score' }
-                })
-              })
-            })
-          })
-        })
+                  script: { source: '_score' },
+                }),
+              }),
+            }),
+          }),
+        }),
       })
     );
 
@@ -109,15 +109,15 @@ describe('discover_directories', () => {
     const mockResponse: MockSearchResponse = {
       aggregations: {
         directories: {
-          buckets: []
-        }
-      }
+          buckets: [],
+        },
+      },
     };
     mockClient.search.mockResolvedValue(mockResponse as never);
 
     await discoverDirectories({
       query: 'test',
-      minFiles: 3
+      minFiles: 3,
     } as Parameters<typeof discoverDirectories>[0]);
 
     expect(mockClient.search).toHaveBeenCalledWith(
@@ -128,12 +128,12 @@ describe('discover_directories', () => {
               {
                 semantic: {
                   field: 'semantic_text',
-                  query: 'test'
-                }
-              }
-            ]
-          }
-        }
+                  query: 'test',
+                },
+              },
+            ],
+          },
+        },
       })
     );
   });
@@ -142,9 +142,9 @@ describe('discover_directories', () => {
     const mockResponse: MockSearchResponse = {
       aggregations: {
         directories: {
-          buckets: []
-        }
-      }
+          buckets: [],
+        },
+      },
     };
     mockClient.search.mockResolvedValue(mockResponse as never);
 
@@ -160,20 +160,20 @@ describe('discover_directories', () => {
     const mockResponse: MockSearchResponse = {
       aggregations: {
         directories: {
-          buckets: []
-        }
-      }
+          buckets: [],
+        },
+      },
     };
     mockClient.search.mockResolvedValue(mockResponse as never);
 
     await discoverDirectories({
       query: 'test',
-      index: 'custom-index'
+      index: 'custom-index',
     } as Parameters<typeof discoverDirectories>[0]);
 
     expect(mockClient.search).toHaveBeenCalledWith(
       expect.objectContaining({
-        index: 'custom-index'
+        index: 'custom-index',
       })
     );
   });

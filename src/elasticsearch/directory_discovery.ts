@@ -43,44 +43,44 @@ export async function discoverSignificantDirectories(
           field: 'directoryPath',
           size: options.maxResults || 50,
           min_doc_count: options.minFiles || 3,
-          order: { score: 'desc' }
+          order: { score: 'desc' },
         },
         aggs: {
           score: {
             avg: {
-              script: { source: '_score' }
-            }
+              script: { source: '_score' },
+            },
           },
           file_count: {
-            cardinality: { field: 'filePath' }
+            cardinality: { field: 'filePath' },
           },
           symbol_count: {
             nested: { path: 'symbols' },
             aggs: {
-              count: { value_count: { field: 'symbols.name' } }
-            }
+              count: { value_count: { field: 'symbols.name' } },
+            },
           },
           languages: {
-            terms: { field: 'language', size: 10 }
+            terms: { field: 'language', size: 10 },
           },
           top_kinds: {
-            terms: { field: 'kind', size: 5 }
-          }
-        }
-      }
-    }
+            terms: { field: 'kind', size: 5 },
+          },
+        },
+      },
+    },
   });
 
   const buckets = (response.aggregations?.directories as DirectoryAggregationResponse)?.buckets || [];
-  
-  return buckets.map(bucket => {
+
+  return buckets.map((bucket) => {
     return {
       path: bucket.key,
       fileCount: bucket.file_count.value,
       symbolCount: bucket.symbol_count.count.value,
-      languages: bucket.languages.buckets.map(b => b.key),
-      topKinds: bucket.top_kinds.buckets.map(b => b.key),
-      score: bucket.score.value
+      languages: bucket.languages.buckets.map((b) => b.key),
+      topKinds: bucket.top_kinds.buckets.map((b) => b.key),
+      score: bucket.score.value,
     };
   });
 }
