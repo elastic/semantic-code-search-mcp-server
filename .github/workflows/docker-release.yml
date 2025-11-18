@@ -76,7 +76,7 @@ jobs:
         with:
           context: .
           platforms: linux/amd64
-          push: (github.event_name != 'pull_request' || ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]' ))
+          push: ${{ github.event_name != 'pull_request' || ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]' ) }}
           sbom: true
           provenance: mode=max
           labels: ${{ steps.meta.outputs.labels }}
