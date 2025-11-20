@@ -30,19 +30,10 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "release-scsmcp-${{ github.ref }}"
+  group: "release-scsi-mcp-${{ github.sha }}"
   cancel-in-progress: true
 jobs:
-  fork:
-    runs-on: ubuntu-latest
-    if: ${{ github.event.pull_request.head.repo.full_name != 'elastic/semantic-code-search-mcp-server' && github.event.number != '' }}
-    steps:
-      - name: Error
-        run: |
-          echo "::error title=Checks not running:: This workflow is not intended to run on forks. Please create a pull request using a feature branch in the main repository."
-          exit 1
   docker:
-    if: ${{ github.event.pull_request.head.repo.full_name == 'elastic/semantic-code-search-mcp-server' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -52,7 +43,7 @@ jobs:
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # ratchet:docker/setup-buildx-action@v3
 
       - name: Login to Docker registry
-        if: github.event_name != 'pull_request' || ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]' )
+        if: ${{ github.event.pull_request.head.repo.full_name == 'elastic/semantic-code-search-mcp-server' || github.ref == 'refs/heads/main' }}
         uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # ratchet:docker/login-action@v3
         with:
           registry: ${{ secrets.ELASTIC_DOCKER_REGISTRY }}
@@ -63,7 +54,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # ratchet:docker/metadata-action@v5
         with:
-          images: docker.elastic.co/observability-ci/semantic-code-search-mcp-server
+          images: docker.elastic.co/observability-ci/scsi
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=branch
@@ -76,7 +67,7 @@ jobs:
         with:
           context: .
           platforms: linux/amd64
-          push: ${{ github.event_name != 'pull_request' || ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]' ) }}
+          push: ${{ github.event.pull_request.head.repo.full_name == 'elastic/semantic-code-search-mcp-server' || github.ref == 'refs/heads/main' }}
           sbom: true
           provenance: mode=max
           labels: ${{ steps.meta.outputs.labels }}
