@@ -1,7 +1,5 @@
 import { Client, ClientOptions } from '@elastic/elasticsearch';
-import {
-  QueryDslQueryContainer,
-} from '@elastic/elasticsearch/lib/api/types';
+import { QueryDslQueryContainer } from '@elastic/elasticsearch/lib/api/types';
 import { elasticsearchConfig } from '../config';
 export { elasticsearchConfig };
 
@@ -184,7 +182,7 @@ interface FileAggregationWithImports {
 export async function aggregateBySymbolsAndImports(
   query: QueryDslQueryContainer,
   index?: string,
-  size?: number,
+  size?: number
 ): Promise<Record<string, FileSymbolsAndImports>> {
   const response = await client.search<unknown, FileAggregationWithImports>({
     index: index || elasticsearchConfig.index,
@@ -289,47 +287,56 @@ export async function aggregateBySymbolsAndImports(
     for (const bucket of files.files.buckets) {
       const filePath = bucket.key;
       const symbols = bucket.symbols.names.buckets
-        .map(b => ({
+        .map((b) => ({
           name: b.key,
           kind: b.kind.buckets[0].key,
           line: b.line.buckets[0].key,
         }))
-        .reduce((acc: Record<string, SymbolInfo[]>, { kind, ...rest }) => {
-          if (!acc[kind]) {
-            acc[kind] = [];
-          }
-          acc[kind].push(rest);
-          return acc;
-        }, {} as Record<string, SymbolInfo[]>);
+        .reduce(
+          (acc: Record<string, SymbolInfo[]>, { kind, ...rest }) => {
+            if (!acc[kind]) {
+              acc[kind] = [];
+            }
+            acc[kind].push(rest);
+            return acc;
+          },
+          {} as Record<string, SymbolInfo[]>
+        );
 
       const imports = bucket.imports.paths.buckets
-        .map(b => ({
+        .map((b) => ({
           path: b.key,
           type: b.type.buckets[0].key,
-          symbols: b.symbols.buckets.map(s => s.key),
+          symbols: b.symbols.buckets.map((s) => s.key),
         }))
-        .reduce((acc: Record<string, ImportInfo[]>, { type, ...rest }) => {
-          if (!acc[type]) {
-            acc[type] = [];
-          }
-          acc[type].push(rest);
-          return acc;
-        }, {} as Record<string, ImportInfo[]>);
+        .reduce(
+          (acc: Record<string, ImportInfo[]>, { type, ...rest }) => {
+            if (!acc[type]) {
+              acc[type] = [];
+            }
+            acc[type].push(rest);
+            return acc;
+          },
+          {} as Record<string, ImportInfo[]>
+        );
 
       const exports = bucket.exports.names.buckets
-        .map(b => ({
+        .map((b) => ({
           name: b.key,
           type: b.type.buckets[0]?.key,
           target: b.target.buckets[0]?.key,
         }))
-        .reduce((acc: Record<string, ExportInfo[]>, { type, name, target }) => {
-          if (!type) return acc;
-          if (!acc[type]) {
-            acc[type] = [];
-          }
-          acc[type].push({ name, ...(target && { target }) });
-          return acc;
-        }, {} as Record<string, ExportInfo[]>);
+        .reduce(
+          (acc: Record<string, ExportInfo[]>, { type, name, target }) => {
+            if (!type) return acc;
+            if (!acc[type]) {
+              acc[type] = [];
+            }
+            acc[type].push({ name, ...(target && { target }) });
+            return acc;
+          },
+          {} as Record<string, ExportInfo[]>
+        );
 
       results[filePath] = { symbols, imports, exports };
     }
@@ -368,8 +375,8 @@ function levenshteinDistance(str1: string, str2: string): number {
       } else {
         matrix[i][j] = Math.min(
           matrix[i - 1][j - 1] + 1, // substitution
-          matrix[i][j - 1] + 1,     // insertion
-          matrix[i - 1][j] + 1      // deletion
+          matrix[i][j - 1] + 1, // insertion
+          matrix[i - 1][j] + 1 // deletion
         );
       }
     }
@@ -421,7 +428,7 @@ export async function getAvailableIndices(): Promise<IndexInfo[]> {
     for (const [, indexInfo] of indexEntries) {
       if (!indexInfo.aliases) continue;
 
-      const repoAliases = Object.keys(indexInfo.aliases).filter(alias => alias.endsWith('-repo'));
+      const repoAliases = Object.keys(indexInfo.aliases).filter((alias) => alias.endsWith('-repo'));
 
       for (const alias of repoAliases) {
         try {
@@ -455,7 +462,7 @@ export async function getAvailableIndices(): Promise<IndexInfo[]> {
  */
 export async function formatIndexNotFoundError(requestedIndex: string): Promise<string> {
   const availableIndices = await getAvailableIndices();
-  
+
   let errorMessage = `The index '${requestedIndex}' was not found.`;
 
   if (availableIndices.length > 0) {

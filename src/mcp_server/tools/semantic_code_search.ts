@@ -86,7 +86,7 @@ export async function semanticCodeSearch(params: SemanticCodeSearchParams): Prom
         {
           type: 'text',
           text: JSON.stringify(
-            response.hits.hits.map(hit => {
+            response.hits.hits.map((hit) => {
               const { type, language, kind, filePath, content } = hit._source as {
                 type: string;
                 language: string;

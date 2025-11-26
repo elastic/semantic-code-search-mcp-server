@@ -73,7 +73,7 @@ export async function readFile({ filePaths, index }: z.infer<typeof readFileSche
         _source: ['filePath', 'content', 'startLine', 'endLine', 'kind'],
         query: {
           bool: {
-            should: filePaths.map(filePath => ({
+            should: filePaths.map((filePath) => ({
               match: { filePath },
             })),
             minimum_should_match: 1,

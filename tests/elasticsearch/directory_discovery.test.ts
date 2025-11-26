@@ -16,7 +16,7 @@ describe('directory_discovery', () => {
                   symbol_count: { count: { value: 150 } },
                   languages: { buckets: [{ key: 'typescript', doc_count: 10 }] },
                   top_kinds: { buckets: [{ key: 'function_declaration', doc_count: 50 }] },
-                  score: { value: 9.555555 }
+                  score: { value: 9.555555 },
                 },
                 {
                   key: 'src/components',
@@ -25,19 +25,18 @@ describe('directory_discovery', () => {
                   symbol_count: { count: { value: 200 } },
                   languages: { buckets: [{ key: 'typescript', doc_count: 15 }] },
                   top_kinds: { buckets: [{ key: 'class_declaration', doc_count: 30 }] },
-                  score: { value: 7.5555555 }
-                }
-              ]
-            }
-          }
-        })
+                  score: { value: 7.5555555 },
+                },
+              ],
+            },
+          },
+        }),
       };
 
-      const results = await discoverSignificantDirectories(
-        mockClient as unknown as Client,
-        'test-index',
-        { minFiles: 3, maxResults: 10 }
-      );
+      const results = await discoverSignificantDirectories(mockClient as unknown as Client, 'test-index', {
+        minFiles: 3,
+        maxResults: 10,
+      });
 
       expect(results).toHaveLength(2);
       expect(results[0].score).toBeGreaterThan(results[1].score);
@@ -49,17 +48,13 @@ describe('directory_discovery', () => {
         search: jest.fn().mockResolvedValue({
           aggregations: {
             directories: {
-              buckets: []
-            }
-          }
-        })
+              buckets: [],
+            },
+          },
+        }),
       };
 
-      const results = await discoverSignificantDirectories(
-        mockClient as unknown as Client,
-        'test-index',
-        {}
-      );
+      const results = await discoverSignificantDirectories(mockClient as unknown as Client, 'test-index', {});
 
       expect(results).toEqual([]);
     });
@@ -69,18 +64,18 @@ describe('directory_discovery', () => {
         search: jest.fn().mockResolvedValue({
           aggregations: {
             directories: {
-              buckets: []
-            }
-          }
-        })
+              buckets: [],
+            },
+          },
+        }),
       };
 
       const query = { bool: { must: [{ match: { content: 'test' } }] } };
-      await discoverSignificantDirectories(
-        mockClient as unknown as Client,
-        'test-index',
-        { query, minFiles: 5, maxResults: 20 }
-      );
+      await discoverSignificantDirectories(mockClient as unknown as Client, 'test-index', {
+        query,
+        minFiles: 5,
+        maxResults: 20,
+      });
 
       expect(mockClient.search).toHaveBeenCalledWith({
         index: 'test-index',
@@ -92,17 +87,17 @@ describe('directory_discovery', () => {
               field: 'directoryPath',
               size: 20,
               min_doc_count: 5,
-              order: { score: 'desc' }
+              order: { score: 'desc' },
             }),
             aggs: expect.objectContaining({
               score: expect.objectContaining({
                 avg: expect.objectContaining({
-                  script: { source: '_score' }
-                })
-              })
-            })
-          })
-        })
+                  script: { source: '_score' },
+                }),
+              }),
+            }),
+          }),
+        }),
       });
     });
   });

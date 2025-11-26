@@ -33,24 +33,23 @@ export async function documentSymbols(params: DocumentSymbolsParams): Promise<Ca
 
   // 1. Get the reconstructed file content
   const reconstructedFile = await readFile({ filePaths: [filePath], index });
-  
+
   // If there's an error, pass it through
   if (reconstructedFile.isError) {
     return reconstructedFile;
   }
-  
-  const reconstructedContent = typeof reconstructedFile.content[0]?.text === 'string'
-    ? reconstructedFile.content[0].text
-    : '';
+
+  const reconstructedContent =
+    typeof reconstructedFile.content[0]?.text === 'string' ? reconstructedFile.content[0].text : '';
 
   // 2. Get all the symbols in the file
   const allSymbolsResult = await mapSymbolsByQuery({ kql: `filePath: "${filePath}"`, index, size: 1000 });
-  
+
   // If there's an error, pass it through
   if (allSymbolsResult.isError) {
     return allSymbolsResult;
   }
-  
+
   const allSymbols = JSON.parse(allSymbolsResult.content[0].text as string);
   const symbolsForFile = allSymbols[filePath] || [];
 
@@ -67,6 +66,6 @@ export async function documentSymbols(params: DocumentSymbolsParams): Promise<Ca
   }));
 
   return {
-    content: [{ type: 'text', text: JSON.stringify(formattedSymbols, null, 2) }]
+    content: [{ type: 'text', text: JSON.stringify(formattedSymbols, null, 2) }],
   };
 }

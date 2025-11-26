@@ -77,7 +77,7 @@ export async function listIndices(): Promise<CallToolResult> {
   for (const [indexName, indexInfo] of indexEntries) {
     if (!indexInfo.aliases) continue;
 
-    const repoAliases = Object.keys(indexInfo.aliases).filter(alias => alias.endsWith('-repo'));
+    const repoAliases = Object.keys(indexInfo.aliases).filter((alias) => alias.endsWith('-repo'));
 
     for (const alias of repoAliases) {
       const searchResponse = await client.search<unknown, Aggregations>({
@@ -109,7 +109,8 @@ export async function listIndices(): Promise<CallToolResult> {
 
       // Check if it's not the last alias of the last index entry
       const isLastName = repoAliases.indexOf(alias) === repoAliases.length - 1;
-      const isLastEntry = indexEntries.indexOf(indexEntries.find(entry => entry[0] === indexName)!) === indexEntries.length - 1;
+      const isLastEntry =
+        indexEntries.indexOf(indexEntries.find((entry) => entry[0] === indexName)!) === indexEntries.length - 1;
 
       if (!isLastName || !isLastEntry) {
         result += '---\n';

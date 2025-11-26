@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { fromKueryExpression, toElasticsearchQuery } from '../../../libs/es-query';
-import { aggregateBySymbolsAndImports, isIndexNotFoundError, formatIndexNotFoundError, elasticsearchConfig } from '../../utils/elasticsearch';
+import {
+  aggregateBySymbolsAndImports,
+  isIndexNotFoundError,
+  formatIndexNotFoundError,
+  elasticsearchConfig,
+} from '../../utils/elasticsearch';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 
 /**
@@ -9,8 +14,16 @@ import { CallToolResult } from '@modelcontextprotocol/sdk/types';
  * @property {string} directory - Directory path to explore.
  */
 export const mapSymbolsByQuerySchema = z.object({
-  kql: z.string().optional().describe('KQL query string for filtering (e.g., "language: typescript and kind: function_declaration")'),
-  directory: z.string().optional().describe('Directory path to explore (e.g., "src/platform/packages/kbn-esql-utils"). Convenience wrapper for filePath filtering.'),
+  kql: z
+    .string()
+    .optional()
+    .describe('KQL query string for filtering (e.g., "language: typescript and kind: function_declaration")'),
+  directory: z
+    .string()
+    .optional()
+    .describe(
+      'Directory path to explore (e.g., "src/platform/packages/kbn-esql-utils"). Convenience wrapper for filePath filtering.'
+    ),
   index: z.string().optional().describe('The Elasticsearch index to search.'),
   size: z.number().optional().describe('The number of top level files to return').default(1000),
 });
@@ -25,7 +38,7 @@ export type MapSymbolsByQueryParams = z.infer<typeof mapSymbolsByQuerySchema>;
 function buildKqlFromDirectory(directory: string): string {
   // Remove trailing slash if present
   const cleanDir = directory.replace(/\/$/, '');
-  
+
   // Use wildcard for directory and all subdirectories
   return `filePath: ${cleanDir}/*`;
 }
@@ -41,25 +54,25 @@ function validateAndBuildQuery(input: z.infer<typeof mapSymbolsByQuerySchema>): 
   if (input.directory && input.kql) {
     throw new Error(
       'Cannot use both "directory" and "kql" parameters together.\n' +
-      'Use "directory" for simple directory exploration, or "kql" for advanced filtering.'
+        'Use "directory" for simple directory exploration, or "kql" for advanced filtering.'
     );
   }
-  
+
   // Check for missing parameters
   if (!input.directory && !input.kql) {
     throw new Error(
       'Must provide either "directory" or "kql" parameter.\n' +
-      'Examples:\n' +
-      '  - { "directory": "src/platform/packages/kbn-esql-utils" }\n' +
-      '  - { "kql": "language: typescript and kind: function_declaration" }'
+        'Examples:\n' +
+        '  - { "directory": "src/platform/packages/kbn-esql-utils" }\n' +
+        '  - { "kql": "language: typescript and kind: function_declaration" }'
     );
   }
-  
+
   // Build query based on input
   if (input.directory) {
     return buildKqlFromDirectory(input.directory);
   }
-  
+
   return input.kql!;
 }
 
@@ -75,7 +88,7 @@ function validateAndBuildQuery(input: z.infer<typeof mapSymbolsByQuerySchema>): 
  */
 export async function mapSymbolsByQuery(params: MapSymbolsByQueryParams): Promise<CallToolResult> {
   const { index, size } = params;
-  
+
   // Validate and build KQL query
   const kql = validateAndBuildQuery(params);
 
@@ -86,7 +99,7 @@ export async function mapSymbolsByQuery(params: MapSymbolsByQueryParams): Promis
     const results = await aggregateBySymbolsAndImports(dsl, index, size);
 
     return {
-      content: [{ type: 'text', text: JSON.stringify(results) }]
+      content: [{ type: 'text', text: JSON.stringify(results) }],
     };
   } catch (error) {
     if (isIndexNotFoundError(error)) {

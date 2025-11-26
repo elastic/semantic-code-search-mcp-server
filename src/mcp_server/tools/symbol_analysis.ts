@@ -155,10 +155,10 @@ export async function symbolAnalysis(params: SymbolAnalysisParams): Promise<Call
       const files = response.aggregations;
       for (const bucket of files.files.buckets) {
         const filePath = bucket.key;
-        const languages = bucket.languages.buckets.map(b => b.key);
-        const kinds: KindInfo[] = bucket.kinds.buckets.map(b => ({
+        const languages = bucket.languages.buckets.map((b) => b.key);
+        const kinds: KindInfo[] = bucket.kinds.buckets.map((b) => ({
           kind: b.key,
-          startLines: b.startLines.buckets.map(sl => sl.key),
+          startLines: b.startLines.buckets.map((sl) => sl.key),
         }));
 
         const fileInfo: FileInfo = {
@@ -167,12 +167,20 @@ export async function symbolAnalysis(params: SymbolAnalysisParams): Promise<Call
           languages,
         };
 
-        const allKinds = kinds.map(k => k.kind);
+        const allKinds = kinds.map((k) => k.kind);
 
-        if (allKinds.includes('function_declaration') || allKinds.includes('class_declaration') || allKinds.includes('lexical_declaration')) {
+        if (
+          allKinds.includes('function_declaration') ||
+          allKinds.includes('class_declaration') ||
+          allKinds.includes('lexical_declaration')
+        ) {
           report.primaryDefinitions.push(fileInfo);
         }
-        if (allKinds.includes('interface_declaration') || allKinds.includes('type_alias_declaration') || allKinds.includes('enum_declaration')) {
+        if (
+          allKinds.includes('interface_declaration') ||
+          allKinds.includes('type_alias_declaration') ||
+          allKinds.includes('enum_declaration')
+        ) {
           report.typeDefinitions.push(fileInfo);
         }
         if (allKinds.includes('call_expression')) {
@@ -188,7 +196,7 @@ export async function symbolAnalysis(params: SymbolAnalysisParams): Promise<Call
     }
 
     return {
-      content: [{ type: 'text', text: JSON.stringify(report, null, 2) }]
+      content: [{ type: 'text', text: JSON.stringify(report, null, 2) }],
     };
   } catch (error) {
     if (isIndexNotFoundError(error)) {

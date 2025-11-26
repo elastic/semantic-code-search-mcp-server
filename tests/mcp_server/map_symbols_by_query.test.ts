@@ -151,16 +151,9 @@ describe('map_symbols_by_query', () => {
 
     const parsedResult = JSON.parse(result.content[0].text as string);
     expect(parsedResult['src/example.ts'].exports).toEqual({
-      named: [
-        { name: 'myFunction' },
-        { name: 'MyClass' },
-      ],
-      default: [
-        { name: 'UserService' },
-      ],
-      namespace: [
-        { name: '*', target: 'src/types' },
-      ],
+      named: [{ name: 'myFunction' }, { name: 'MyClass' }],
+      default: [{ name: 'UserService' }],
+      namespace: [{ name: '*', target: 'src/types' }],
     });
   });
 });
@@ -174,18 +167,16 @@ describe('map_symbols_by_query with directory parameter', () => {
     const mockAggregations = {
       'src/platform/packages/kbn-esql/parser.ts': {
         symbols: {
-          'function_declaration': [
-            { name: 'parseQuery', line: 42 }
-          ]
+          function_declaration: [{ name: 'parseQuery', line: 42 }],
         },
-        imports: {}
-      }
+        imports: {},
+      },
     };
     (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
 
-    const result = await mapSymbolsByQuery({ 
+    const result = await mapSymbolsByQuery({
       directory: 'src/platform/packages/kbn-esql',
-      size: 1000 
+      size: 1000,
     });
 
     // Verify the aggregateBySymbolsAndImports was called with correct DSL
@@ -196,11 +187,11 @@ describe('map_symbols_by_query with directory parameter', () => {
             expect.objectContaining({
               query_string: expect.objectContaining({
                 fields: ['filePath'],
-                query: 'src\\/platform\\/packages\\/kbn\\-esql\\/*'
-              })
-            })
-          ])
-        })
+                query: 'src\\/platform\\/packages\\/kbn\\-esql\\/*',
+              }),
+            }),
+          ]),
+        }),
       }),
       undefined,
       1000
@@ -208,13 +199,13 @@ describe('map_symbols_by_query with directory parameter', () => {
 
     expect(JSON.parse(result.content[0].text as string)).toEqual(mockAggregations);
   });
-  
+
   it('should remove trailing slashes from directory', async () => {
     (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue({});
-    
-    await mapSymbolsByQuery({ 
+
+    await mapSymbolsByQuery({
       directory: 'src/utils/',
-      size: 1000 
+      size: 1000,
     });
 
     expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith(
@@ -224,46 +215,40 @@ describe('map_symbols_by_query with directory parameter', () => {
             expect.objectContaining({
               query_string: expect.objectContaining({
                 fields: ['filePath'],
-                query: 'src\\/utils\\/*'
-              })
-            })
-          ])
-        })
+                query: 'src\\/utils\\/*',
+              }),
+            }),
+          ]),
+        }),
       }),
       undefined,
       1000
     );
   });
-  
+
   it('should throw error when both directory and kql provided', async () => {
     await expect(
-      mapSymbolsByQuery({ 
-        directory: 'src', 
+      mapSymbolsByQuery({
+        directory: 'src',
         kql: 'language: typescript',
-        size: 1000 
+        size: 1000,
       })
     ).rejects.toThrow('Cannot use both');
   });
-  
+
   it('should throw error when neither directory nor kql provided', async () => {
-    await expect(
-      mapSymbolsByQuery({ size: 1000 })
-    ).rejects.toThrow('Must provide either');
+    await expect(mapSymbolsByQuery({ size: 1000 })).rejects.toThrow('Must provide either');
   });
 
   it('should work with custom index', async () => {
     (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue({});
-    
-    await mapSymbolsByQuery({ 
+
+    await mapSymbolsByQuery({
       directory: 'src/utils',
       index: 'custom-index',
-      size: 1000 
+      size: 1000,
     });
 
-    expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith(
-      expect.anything(),
-      'custom-index',
-      1000
-    );
+    expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith(expect.anything(), 'custom-index', 1000);
   });
 });
