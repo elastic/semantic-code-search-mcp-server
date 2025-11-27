@@ -28,6 +28,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  packages: write
 
 concurrency:
   group: "release-scsi-mcp-${{ github.sha }}"
@@ -39,6 +40,9 @@ jobs:
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # ratchet:docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # ratchet:docker/setup-buildx-action@v3
 
@@ -46,15 +50,15 @@ jobs:
         if: ${{ github.event.pull_request.head.repo.full_name == 'elastic/semantic-code-search-mcp-server' || github.ref == 'refs/heads/main' }}
         uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # ratchet:docker/login-action@v3
         with:
-          registry: ${{ secrets.ELASTIC_DOCKER_REGISTRY }}
-          username: ${{ secrets.ELASTIC_DOCKER_USERNAME }}
-          password: ${{ secrets.ELASTIC_DOCKER_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # ratchet:docker/metadata-action@v5
         with:
-          images: docker.elastic.co/observability-ci/semantic-code-search-mcp-server
+          images: ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=branch
@@ -66,7 +70,7 @@ jobs:
         id: build
         with:
           context: .
-          platforms: linux/amd64
+          platforms: linux/amd64, linux/arm64
           push: ${{ github.event.pull_request.head.repo.full_name == 'elastic/semantic-code-search-mcp-server' || github.ref == 'refs/heads/main' }}
           sbom: true
           provenance: mode=max
