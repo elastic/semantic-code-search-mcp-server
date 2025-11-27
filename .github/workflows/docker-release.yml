@@ -54,7 +54,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # ratchet:docker/metadata-action@v5
         with:
-          images: docker.elastic.co/observability-ci/scsi
+          images: docker.elastic.co/observability-ci/semantic-code-search-mcp-server
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=branch
