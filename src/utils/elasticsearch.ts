@@ -409,50 +409,130 @@ function findClosestIndex(requestedIndex: string, availableIndices: IndexInfo[])
 }
 
 /**
- * Gets information about available indices
- * Returns a list of index names and their file counts
+ * Discovers repo indices from aliases ending with -repo
+ * Returns the actual index names (not alias names) to match the UX goal of showing what users indexed
  */
-export async function getAvailableIndices(): Promise<IndexInfo[]> {
+async function discoverRepoIndicesFromAliases(): Promise<string[]> {
+  const repoIndices: string[] = [];
+
   try {
     const aliasesResponse = await client.indices.getAlias({
       name: '*-repo',
     });
 
-    if (!aliasesResponse || Object.keys(aliasesResponse).length === 0) {
-      return [];
+    if (aliasesResponse && Object.keys(aliasesResponse).length > 0) {
+      const indexEntries = Object.entries(aliasesResponse);
+
+      for (const [indexName, indexInfo] of indexEntries) {
+        if (!indexInfo.aliases) continue;
+
+        // Check if this index has any -repo aliases
+        const repoAliases = Object.keys(indexInfo.aliases).filter((alias) => alias.endsWith('-repo'));
+        if (repoAliases.length > 0) {
+          // Return the actual index name, not the alias name
+          // This matches the behavior in list_indices.ts and aligns with the UX goal
+          repoIndices.push(indexName);
+        }
+      }
     }
+  } catch (error) {
+    // If alias query fails, continue to fallback method
+    console.warn('Failed to query aliases:', error);
+  }
 
-    const indices: IndexInfo[] = [];
-    const indexEntries = Object.entries(aliasesResponse);
+  return repoIndices;
+}
 
-    for (const [, indexInfo] of indexEntries) {
-      if (!indexInfo.aliases) continue;
+/**
+ * Discovers repo indices from _settings pattern
+ */
+async function discoverRepoIndicesFromSettings(): Promise<string[]> {
+  const repoIndices: string[] = [];
 
-      const repoAliases = Object.keys(indexInfo.aliases).filter((alias) => alias.endsWith('-repo'));
+  try {
+    // Get all indices ending with _settings
+    const allIndicesResponse = await client.indices.get({
+      index: '*_settings',
+    });
 
-      for (const alias of repoAliases) {
+    if (allIndicesResponse && Object.keys(allIndicesResponse).length > 0) {
+      const settingsIndices = Object.keys(allIndicesResponse);
+
+      for (const settingsIndex of settingsIndices) {
+        // Extract base name by removing _settings suffix
+        const baseIndexName = settingsIndex.replace(/_settings$/, '');
+
+        // Verify the base index exists (it should, as indexer creates both)
         try {
-          const searchResponse = await client.search({
-            index: alias,
-            size: 0,
-            aggs: {
-              filesIndexed: { cardinality: { field: 'filePath' } },
-            },
+          const indexExists = await client.indices.exists({
+            index: baseIndexName,
           });
 
-          const aggregations = searchResponse.aggregations as { filesIndexed?: { value?: number } } | undefined;
-          const fileCount = aggregations?.filesIndexed?.value || 0;
-          indices.push({ name: alias, fileCount: Math.round(fileCount) });
+          if (indexExists) {
+            repoIndices.push(baseIndexName);
+          }
         } catch {
-          // Skip indices we can't query
+          // Skip if we can't verify the base index exists
           continue;
         }
       }
     }
+  } catch (error) {
+    // If settings discovery fails, return empty array
+    console.warn('Failed to discover indices from _settings pattern:', error);
+  }
+
+  return repoIndices;
+}
+
+/**
+ * Gets information about available indices
+ * Returns a list of index names (not alias names) and their file counts
+ * Uses both alias-based discovery (backward compatible) and _settings-based discovery (fallback)
+ *
+ * Note: Returns actual index names (e.g., 'kibana') not alias names (e.g., 'kibana-repo')
+ * to match the UX goal of showing what users actually indexed
+ */
+export async function getAvailableIndices(): Promise<IndexInfo[]> {
+  try {
+    // Strategy 1: Discover from aliases (backward compatible)
+    const aliasIndices = await discoverRepoIndicesFromAliases();
+
+    // Strategy 2: Discover from _settings indices (fallback)
+    const settingsIndices = await discoverRepoIndicesFromSettings();
+
+    // Merge and deduplicate
+    const allIndexNames = Array.from(new Set([...aliasIndices, ...settingsIndices]));
+
+    if (allIndexNames.length === 0) {
+      return [];
+    }
+
+    const indices: IndexInfo[] = [];
+
+    for (const indexName of allIndexNames) {
+      try {
+        const searchResponse = await client.search({
+          index: indexName,
+          size: 0,
+          aggs: {
+            filesIndexed: { cardinality: { field: 'filePath' } },
+          },
+        });
+
+        const aggregations = searchResponse.aggregations as { filesIndexed?: { value?: number } } | undefined;
+        const fileCount = aggregations?.filesIndexed?.value ?? 0;
+        indices.push({ name: indexName, fileCount: Math.round(fileCount) });
+      } catch {
+        // Skip indices we can't query
+        continue;
+      }
+    }
 
     return indices;
-  } catch {
+  } catch (error) {
     // If we can't get available indices, return empty array
+    console.warn('Failed to get available indices:', error);
     return [];
   }
 }
