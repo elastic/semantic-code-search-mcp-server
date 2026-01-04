@@ -20,6 +20,13 @@ interface Symbol {
   line: number;
 }
 
+interface MapSymbolsByQueryResult {
+  [filePath: string]: {
+    symbols?: Record<string, Array<{ name: string; line: number }>>;
+    // imports/exports are intentionally ignored for this tool
+  };
+}
+
 /**
  * Analyzes a file to identify the key symbols that would most benefit from
  * documentation.
@@ -50,11 +57,16 @@ export async function documentSymbols(params: DocumentSymbolsParams): Promise<Ca
     return allSymbolsResult;
   }
 
-  const allSymbols = JSON.parse(allSymbolsResult.content[0].text as string);
-  const symbolsForFile = allSymbols[filePath] || [];
+  const rawText = allSymbolsResult.content[0]?.text;
+  const allSymbols: MapSymbolsByQueryResult = typeof rawText === 'string' ? JSON.parse(rawText) : {};
+  const symbolsForFile = allSymbols[filePath]?.symbols ?? {};
+
+  const flattenedSymbols: Symbol[] = Object.entries(symbolsForFile).flatMap(([kind, entries]) =>
+    entries.map((entry) => ({ name: entry.name, kind, line: entry.line }))
+  );
 
   // 3. Identify the important symbols
-  const importantSymbols = symbolsForFile.filter((symbol: Symbol) => {
+  const importantSymbols = flattenedSymbols.filter((symbol: Symbol) => {
     return reconstructedContent.includes(symbol.name);
   });
 

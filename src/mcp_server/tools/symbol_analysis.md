@@ -5,9 +5,19 @@ Precision tool for step 2 of "chain of investigation" - analyze specific symbols
 - **Architecture**: See definition, imports, call sites, tests, docs
 - **Impact**: Find all affected locations for changes
 
+## Notes (locations-first indices)
+
+Chunk documents in `<index>` are content-deduplicated and do **not** store `filePath`/line metadata. This tool uses `<index>_locations` to map chunk occurrences back to file paths.
+
 ## Workflow
 1. Find symbols via `semantic_code_search` or `map_symbols_by_query`
 2. Pass exact symbol name to `symbol_analysis` for complete connections
+
+Under the hood (high level):
+
+1. Search `<index>` for chunk candidates related to the symbol name (yields `chunk_id`s).
+2. Query `<index>_locations` to find which `filePath`s contain those `chunk_id`s (and gather a few example locations).
+3. Join back to `<index>` (multi-get by `chunk_id`) to enrich results with chunk-level metadata (language/type/kind/content).
 
 ## Parameters
 - `symbolName`: The name of the symbol to analyze.

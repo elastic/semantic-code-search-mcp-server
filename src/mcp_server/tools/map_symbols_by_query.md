@@ -16,6 +16,15 @@ Use the `kql` parameter for complex queries:
 
 **Important**: You cannot use both `directory` and `kql` together - choose the one that fits your need.
 
+## Notes (locations-first indices)
+
+This MCP server expects the locations-first model:
+
+- `<index>`: content-deduplicated chunk documents (symbols/imports/exports live here)
+- `<index>_locations`: one document per chunk occurrence (filePath/directoryPath live here)
+
+When your KQL includes file-level fields (like `filePath`), those predicates are evaluated against `<index>_locations` and then joined back to `<index>` via `chunk_id`.
+
 ## Typical Workflow
 1. `discover_directories` → finds "src/platform/packages/kbn-esql-utils"
 2. `map_symbols_by_query` → explore that directory with `{ "directory": "src/platform/packages/kbn-esql-utils" }`

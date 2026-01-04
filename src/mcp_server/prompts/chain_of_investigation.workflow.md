@@ -14,11 +14,22 @@
 - Structured output with line numbers and imports
 - Best for: Finding files using specific symbols, co-occurrence patterns
 
+### Note (locations-first indices)
+
+This MCP server uses a locations-first Elasticsearch model:
+
+- Chunk-level fields (e.g. `language`, `kind`, `content`, `symbols`) live in `<index>`.
+- File-level fields (e.g. `filePath`, `directoryPath`, `startLine`, `endLine`) live in `<index>_locations`.
+
+Implication: a KQL predicate like `filePath: *test*` is evaluated via `<index>_locations` and then joined back to `<index>` via `chunk_id`.
+
 ### semantic_code_search
 **For discovering symbols**
 - Returns top 25 snippets with relevance scores
 - Good for conceptual queries
 - Best for: "How does X work?", exploring unfamiliar code
+
+**Important**: If your request is **KQL-only** and the KQL references file-level fields (like `filePath`), `semantic_code_search` may require a semantic `query` to establish a bounded candidate set. If you really want a filePath-only exploration, prefer `map_symbols_by_query` or `discover_directories`.
 
 ### symbol_analysis
 **Deep dive on one symbol**

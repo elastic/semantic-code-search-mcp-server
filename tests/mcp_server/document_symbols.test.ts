@@ -38,11 +38,17 @@ describe('document_symbols', () => {
         {
           type: 'text',
           text: JSON.stringify({
-            [filePath]: [
-              { name: 'semanticCodeSearchSchema', kind: 'variable', line: 10 },
-              { name: 'semanticCodeSearch', kind: 'function', line: 20 },
-              { name: 'someOtherSymbol', kind: 'variable', line: 30 },
-            ],
+            [filePath]: {
+              symbols: {
+                variable: [
+                  { name: 'semanticCodeSearchSchema', line: 10 },
+                  { name: 'someOtherSymbol', line: 30 },
+                ],
+                function: [{ name: 'semanticCodeSearch', line: 20 }],
+              },
+              imports: {},
+              exports: {},
+            },
           }),
         },
       ],

@@ -4,29 +4,16 @@ import { client } from '../../src/utils/elasticsearch';
 jest.mock('../../src/utils/elasticsearch', () => ({
   client: {
     search: jest.fn(),
+    mget: jest.fn(),
   },
   elasticsearchConfig: {
     index: 'semantic-code-search',
   },
+  isIndexNotFoundError: jest.fn(),
+  formatIndexNotFoundError: jest.fn(),
 }));
 
 const mockClient = client as jest.Mocked<typeof client>;
-
-interface MockSearchResponse {
-  aggregations: {
-    directories: {
-      buckets: Array<{
-        key: string;
-        doc_count: number;
-        file_count: { value: number };
-        symbol_count: { count: { value: number } };
-        languages: { buckets: Array<{ key: string; doc_count: number }> };
-        top_kinds: { buckets: Array<{ key: string; doc_count: number }> };
-        score: { value: number };
-      }>;
-    };
-  };
-}
 
 describe('discover_directories', () => {
   afterEach(() => {
@@ -34,24 +21,29 @@ describe('discover_directories', () => {
   });
 
   it('should construct the correct Elasticsearch query with semantic and KQL filters', async () => {
-    const mockResponse: MockSearchResponse = {
-      aggregations: {
-        directories: {
-          buckets: [
-            {
-              key: 'src/utils',
-              doc_count: 15,
-              file_count: { value: 10 },
-              symbol_count: { count: { value: 150 } },
-              languages: { buckets: [{ key: 'typescript', doc_count: 10 }] },
-              top_kinds: { buckets: [{ key: 'function_declaration', doc_count: 50 }] },
-              score: { value: 9.5 },
-            },
-          ],
+    mockClient.search
+      // chunk search
+      .mockResolvedValueOnce({ hits: { hits: [{ _id: 'c1' }] } } as never)
+      // locations aggregation
+      .mockResolvedValueOnce({
+        aggregations: {
+          directories: {
+            buckets: [
+              {
+                key: 'src/utils',
+                doc_count: 15,
+                file_count: { value: 10 },
+                top_chunks: { buckets: [{ key: 'c1', doc_count: 3 }] },
+              },
+            ],
+          },
         },
-      },
-    };
-    mockClient.search.mockResolvedValue(mockResponse as never);
+      } as never);
+    (mockClient.mget as jest.Mock).mockResolvedValue({
+      docs: [
+        { _id: 'c1', found: true, _source: { language: 'typescript', kind: 'function_declaration', symbols: [] } },
+      ],
+    });
 
     const result = await discoverDirectories({
       query: 'authentication utilities',
@@ -60,40 +52,18 @@ describe('discover_directories', () => {
       maxResults: 10,
     } as Parameters<typeof discoverDirectories>[0]);
 
-    expect(mockClient.search).toHaveBeenCalledWith(
+    expect(mockClient.search).toHaveBeenCalledTimes(2);
+    expect((mockClient.search as jest.Mock).mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
         index: 'semantic-code-search',
-        query: {
-          bool: {
-            must: [
-              {
-                semantic: {
-                  field: 'semantic_text',
-                  query: 'authentication utilities',
-                },
-              },
-              expect.any(Object),
-            ],
-          },
-        },
+        size: 5000,
+        _source: false,
+      })
+    );
+    expect((mockClient.search as jest.Mock).mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        index: 'semantic-code-search_locations',
         size: 0,
-        aggs: expect.objectContaining({
-          directories: expect.objectContaining({
-            terms: expect.objectContaining({
-              field: 'directoryPath',
-              size: 10,
-              min_doc_count: 5,
-              order: { score: 'desc' },
-            }),
-            aggs: expect.objectContaining({
-              score: expect.objectContaining({
-                avg: expect.objectContaining({
-                  script: { source: '_score' },
-                }),
-              }),
-            }),
-          }),
-        }),
       })
     );
 
@@ -101,52 +71,28 @@ describe('discover_directories', () => {
     expect(output).toContain('Found 1 significant directories');
     expect(output).toContain('src/utils');
     expect(output).toContain('Files**: 10');
-    expect(output).toContain('Symbols**: 150');
-    expect(output).toContain('Score**: 9.5');
+    expect(output).toContain('Score**: 15.000');
   });
 
   it('should handle query without KQL', async () => {
-    const mockResponse: MockSearchResponse = {
-      aggregations: {
-        directories: {
-          buckets: [],
-        },
-      },
-    };
-    mockClient.search.mockResolvedValue(mockResponse as never);
+    mockClient.search.mockResolvedValueOnce({ hits: { hits: [{ _id: 'c1' }] } } as never).mockResolvedValueOnce({
+      aggregations: { directories: { buckets: [] } },
+    } as never);
+    (mockClient.mget as jest.Mock).mockResolvedValue({ docs: [] });
 
     await discoverDirectories({
       query: 'test',
       minFiles: 3,
     } as Parameters<typeof discoverDirectories>[0]);
 
-    expect(mockClient.search).toHaveBeenCalledWith(
-      expect.objectContaining({
-        query: {
-          bool: {
-            must: [
-              {
-                semantic: {
-                  field: 'semantic_text',
-                  query: 'test',
-                },
-              },
-            ],
-          },
-        },
-      })
-    );
+    expect(mockClient.search).toHaveBeenCalledTimes(2);
   });
 
   it('should handle empty results', async () => {
-    const mockResponse: MockSearchResponse = {
-      aggregations: {
-        directories: {
-          buckets: [],
-        },
-      },
-    };
-    mockClient.search.mockResolvedValue(mockResponse as never);
+    mockClient.search.mockResolvedValueOnce({ hits: { hits: [{ _id: 'c1' }] } } as never).mockResolvedValueOnce({
+      aggregations: { directories: { buckets: [] } },
+    } as never);
+    (mockClient.mget as jest.Mock).mockResolvedValue({ docs: [] });
 
     const result = await discoverDirectories({
       query: 'nonexistent',
@@ -157,14 +103,7 @@ describe('discover_directories', () => {
   });
 
   it('should use custom index when provided', async () => {
-    const mockResponse: MockSearchResponse = {
-      aggregations: {
-        directories: {
-          buckets: [],
-        },
-      },
-    };
-    mockClient.search.mockResolvedValue(mockResponse as never);
+    mockClient.search.mockResolvedValueOnce({ hits: { hits: [] } } as never);
 
     await discoverDirectories({
       query: 'test',

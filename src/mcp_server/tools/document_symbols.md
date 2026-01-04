@@ -8,6 +8,10 @@ This tool is designed to be used in an automated workflow for improving the sema
 
 An AI coding agent can use this tool to get a focused list of symbols to document, and then generate JSDoc comments for each one.
 
+## Notes (locations-first indices)
+
+Per-file symbol listings are resolved via `<index>_locations` (mapping `filePath` → `chunk_id`) and then joined to `<index>` by `chunk_id` to read chunk-level symbol metadata.
+
 ## Parameters
 
 - `filePath` (`string`): The relative path to the project of the file to analyze.

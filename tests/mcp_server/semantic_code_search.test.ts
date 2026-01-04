@@ -1,5 +1,10 @@
 import { semanticCodeSearch } from '../../src/mcp_server/tools/semantic_code_search';
-import { client, isIndexNotFoundError, formatIndexNotFoundError } from '../../src/utils/elasticsearch';
+import {
+  client,
+  isIndexNotFoundError,
+  formatIndexNotFoundError,
+  getLocationsForChunkIds,
+} from '../../src/utils/elasticsearch';
 
 jest.mock('../../src/utils/elasticsearch', () => ({
   client: {
@@ -13,6 +18,7 @@ jest.mock('../../src/utils/elasticsearch', () => ({
   },
   isIndexNotFoundError: jest.fn(),
   formatIndexNotFoundError: jest.fn(),
+  getLocationsForChunkIds: jest.fn().mockResolvedValue({}),
 }));
 
 describe('semantic_code_search', () => {
@@ -76,8 +82,8 @@ describe('semantic_code_search', () => {
           ],
         },
       },
-      from: 50,
-      size: 50,
+      from: 0,
+      size: 200,
       _source_excludes: ['code_vector', 'semantic_text'],
     });
   });
@@ -85,15 +91,13 @@ describe('semantic_code_search', () => {
   it('should return a simplified response', async () => {
     const mockHits = [
       {
+        _id: 'c1',
         _score: 1.23,
         _source: {
           type: 'code',
           language: 'typescript',
           kind: 'function_declaration',
-          filePath: 'src/index.ts',
           content: 'f()',
-          startLine: 1,
-          endLine: 1,
         },
       },
     ];
@@ -112,16 +116,51 @@ describe('semantic_code_search', () => {
 
     const expectedContent = [
       {
+        id: 'c1',
         score: 1.23,
         type: 'code',
         language: 'typescript',
         kind: 'function_declaration',
-        filePath: 'src/index.ts',
         content: 'f()',
+        locations: [],
       },
     ];
 
     expect(JSON.parse(result.content[0].text as string)).toEqual(expectedContent);
+  });
+
+  it('should attach location summaries when available', async () => {
+    const mockHits = [
+      {
+        _id: 'c1',
+        _score: 1.23,
+        _source: {
+          type: 'code',
+          language: 'typescript',
+          kind: 'function_declaration',
+          content: 'f()',
+        },
+      },
+    ];
+
+    (client.search as jest.Mock).mockResolvedValue({
+      hits: {
+        hits: mockHits,
+      },
+    });
+    (getLocationsForChunkIds as jest.Mock).mockResolvedValue({
+      c1: [{ filePath: 'src/a.ts', startLine: 10, endLine: 12 }],
+    });
+
+    const result = await semanticCodeSearch({
+      query: 'test query',
+      page: 1,
+      size: 10,
+    });
+
+    const parsed = JSON.parse(result.content[0].text as string) as Array<{ id: string; locations: unknown[] }>;
+    expect(parsed[0]?.id).toBe('c1');
+    expect(parsed[0]?.locations).toEqual([{ filePath: 'src/a.ts', startLine: 10, endLine: 12 }]);
   });
 
   it('should use the provided index when searching', async () => {

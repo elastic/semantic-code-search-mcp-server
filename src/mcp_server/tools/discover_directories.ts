@@ -4,6 +4,8 @@ import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { QueryDslQueryContainer } from '@elastic/elasticsearch/lib/api/types';
 import { discoverSignificantDirectories, DirectoryInfo } from '../../elasticsearch/directory_discovery';
 import { client, elasticsearchConfig, isIndexNotFoundError, formatIndexNotFoundError } from '../../utils/elasticsearch';
+import { splitKqlNodeByStorage } from '../../utils/kql_scoping';
+import { MAX_SEMANTIC_SEARCH_CANDIDATES } from '../../utils/limits';
 
 const DiscoverDirectoriesInput = z.object({
   query: z.string().optional().describe('Semantic search query to filter relevant directories'),
@@ -20,11 +22,11 @@ export async function discoverDirectories(input: z.infer<typeof DiscoverDirector
   const params = DiscoverDirectoriesInput.parse(input);
   const index = params.index || elasticsearchConfig.index;
 
-  // Build Elasticsearch query
-  const must: QueryDslQueryContainer[] = [];
+  const chunkMust: QueryDslQueryContainer[] = [];
+  let locationQuery: QueryDslQueryContainer | undefined;
 
   if (params.query) {
-    must.push({
+    chunkMust.push({
       semantic: {
         field: 'semantic_text',
         query: params.query,
@@ -33,17 +35,42 @@ export async function discoverDirectories(input: z.infer<typeof DiscoverDirector
   }
 
   if (params.kql) {
-    // Parse KQL and combine with semantic query
     const ast = fromKueryExpression(params.kql);
-    const kqlQuery = toElasticsearchQuery(ast);
-    must.push(kqlQuery);
+    const split = splitKqlNodeByStorage(ast);
+    if (split.chunkNode) {
+      chunkMust.push(toElasticsearchQuery(split.chunkNode));
+    }
+    if (split.locationNode) {
+      locationQuery = toElasticsearchQuery(split.locationNode);
+    }
   }
 
-  const esQuery = must.length > 0 ? { bool: { must } } : undefined;
+  const chunkQuery = chunkMust.length > 0 ? ({ bool: { must: chunkMust } } as QueryDslQueryContainer) : undefined;
 
   try {
+    const chunkIds =
+      chunkQuery != null
+        ? (
+            await client.search({
+              index,
+              query: chunkQuery,
+              size: MAX_SEMANTIC_SEARCH_CANDIDATES,
+              _source: false,
+            })
+          ).hits.hits
+            .map((h) => h._id)
+            .filter((id): id is string => typeof id === 'string' && id.length > 0)
+        : undefined;
+
+    if (chunkQuery != null && (chunkIds?.length ?? 0) === 0) {
+      return {
+        content: [{ type: 'text', text: 'No significant directories found matching your criteria.' }],
+      };
+    }
+
     const directories = await discoverSignificantDirectories(client, index, {
-      query: esQuery,
+      chunkIds,
+      locationQuery,
       minFiles: params.minFiles,
       maxResults: params.maxResults,
     });
