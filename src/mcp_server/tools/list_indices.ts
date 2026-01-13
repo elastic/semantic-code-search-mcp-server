@@ -1,20 +1,15 @@
 import { z } from 'zod';
-import { client } from '../../utils/elasticsearch';
+import { client, getLocationsIndexName } from '../../utils/elasticsearch';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { SearchRequest } from '@elastic/elasticsearch/lib/api/types';
 import { elasticsearchConfig } from '../../config';
 
 interface AggregationBucket {
   key: string;
-  numberOfFiles: {
-    value: number;
-  };
+  doc_count: number;
 }
 
 interface Aggregations {
-  filesIndexed: {
-    value: number;
-  };
   NumberOfSymbols: {
     total: {
       value: number;
@@ -40,11 +35,9 @@ const aggregationQuery: SearchRequest = {
     },
     Types: {
       terms: { field: 'type' },
-      aggs: { numberOfFiles: { cardinality: { field: 'filePath' } } },
     },
     Languages: {
       terms: { field: 'language' },
-      aggs: { numberOfFiles: { cardinality: { field: 'filePath' } } },
     },
   },
 };
@@ -80,7 +73,18 @@ export async function listIndices(): Promise<CallToolResult> {
     const repoAliases = Object.keys(indexInfo.aliases).filter((alias) => alias.endsWith('-repo'));
 
     for (const alias of repoAliases) {
-      const searchResponse = await client.search<unknown, Aggregations>({
+      const locationsIndex = getLocationsIndexName(alias);
+      const fileCountResponse = await client.search({
+        index: locationsIndex,
+        size: 0,
+        aggs: {
+          filesIndexed: { cardinality: { field: 'filePath' } },
+        },
+      });
+      const filesIndexedAgg = fileCountResponse.aggregations as { filesIndexed?: { value?: number } } | undefined;
+      const filesIndexed = filesIndexedAgg?.filesIndexed?.value ?? 0;
+
+      const searchResponse = await client.search<unknown, Omit<Aggregations, 'filesIndexed'>>({
         index: alias,
         ...aggregationQuery,
       });
@@ -91,13 +95,12 @@ export async function listIndices(): Promise<CallToolResult> {
         continue;
       }
 
-      const filesIndexed = aggregations.filesIndexed.value;
       const numberOfSymbols = aggregations.NumberOfSymbols.total.value;
       const languages = aggregations.Languages.buckets
-        .map((bucket: AggregationBucket) => `${bucket.key} (${formatNumber(bucket.numberOfFiles.value)} files)`)
+        .map((bucket: AggregationBucket) => `${bucket.key} (${formatNumber(bucket.doc_count)} chunks)`)
         .join(', ');
       const types = aggregations.Types.buckets
-        .map((bucket: AggregationBucket) => `${bucket.key} (${formatNumber(bucket.numberOfFiles.value)} files)`)
+        .map((bucket: AggregationBucket) => `${bucket.key} (${formatNumber(bucket.doc_count)} chunks)`)
         .join(', ');
 
       const isDefault = indexName === defaultIndexName || alias === defaultIndexName;

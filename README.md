@@ -6,6 +6,15 @@ This project includes a Model Context Protocol (MCP) server that exposes the ind
 
 You must index your code base with the Semantic Code Search Indexer found here: https://github.com/elastic/semantic-code-search-indexer
 
+### Index model expected by this MCP server
+
+This MCP server expects the **locations-first** index model from indexer PR `elastic/semantic-code-search-indexer#135`:
+
+- `<index>` stores **content-deduplicated chunk documents** (semantic search + metadata).
+- `<index>_locations` stores **one document per chunk occurrence** (file path + line ranges + directory/git metadata) and references chunks by `chunk_id`.
+
+Several tools query `<index>_locations` and join back to `<index>` via `chunk_id` (typically using `mget`).
+
 ## Running with Docker
 
 The easiest way to run the MCP server is with Docker. The server is available on Docker Hub as `simianhacker/semantic-code-search-mcp-server`.

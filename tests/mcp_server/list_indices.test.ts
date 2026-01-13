@@ -9,6 +9,7 @@ jest.mock('../../src/utils/elasticsearch', () => ({
     },
     search: jest.fn(),
   },
+  getLocationsIndexName: (index: string) => `${index}_locations`,
 }));
 
 jest.mock('../../src/config', () => ({
@@ -32,13 +33,17 @@ describe('listIndices', () => {
       'kibana-code-search-2.0': { aliases: { 'kibana-repo': {} } },
       'grafana-code-search': { aliases: { 'grafana-repo': {} } },
     });
-    (mockClient.search as jest.Mock).mockResolvedValue({
-      aggregations: {
-        filesIndexed: { value: 100 },
-        NumberOfSymbols: { total: { value: 200 } },
-        Languages: { buckets: [] },
-        Types: { buckets: [] },
-      },
+    (mockClient.search as jest.Mock).mockImplementation(({ index }: { index: string }) => {
+      if (index.endsWith('_locations')) {
+        return Promise.resolve({ aggregations: { filesIndexed: { value: 100 } } });
+      }
+      return Promise.resolve({
+        aggregations: {
+          NumberOfSymbols: { total: { value: 200 } },
+          Languages: { buckets: [] },
+          Types: { buckets: [] },
+        },
+      });
     });
 
     const result = await listIndices();
@@ -54,13 +59,17 @@ describe('listIndices', () => {
       'kibana-code-search-2.0': { aliases: { 'kibana-repo': {} } },
       'grafana-code-search': { aliases: { 'grafana-repo': {} } },
     });
-    (mockClient.search as jest.Mock).mockResolvedValue({
-      aggregations: {
-        filesIndexed: { value: 100 },
-        NumberOfSymbols: { total: { value: 200 } },
-        Languages: { buckets: [] },
-        Types: { buckets: [] },
-      },
+    (mockClient.search as jest.Mock).mockImplementation(({ index }: { index: string }) => {
+      if (index.endsWith('_locations')) {
+        return Promise.resolve({ aggregations: { filesIndexed: { value: 100 } } });
+      }
+      return Promise.resolve({
+        aggregations: {
+          NumberOfSymbols: { total: { value: 200 } },
+          Languages: { buckets: [] },
+          Types: { buckets: [] },
+        },
+      });
     });
 
     const result = await listIndices();

@@ -1,7 +1,7 @@
 Reconstructs file content from indexed code chunks, presenting a single string that mirrors the original file's structure as closely as possible.
 
 ## Parameters
-- `filePaths` (`string[]`): An array of relative file paths to reconstruct.
+- `filePaths` (`string[]`): An array of file paths to reconstruct (typically repository-relative, as stored in the index).
 - `index` (`string`, optional): The specific Elasticsearch index to query.
 
 ## Returns
@@ -34,3 +34,5 @@ process.exit(1)
 ```
 
 **Note:** The reconstruction is based on indexed code chunks. While it aims to be accurate, it may not be a perfect 1:1 representation of the original file. Requires the same `index` used in the initial `semantic_code_search` to maintain context.
+
+**Note (locations-first indices):** This tool reconstructs files by querying `<index>_locations` for `(filePath, startLine, endLine, chunk_id)` and then fetching the chunk text from the primary index via `chunk_id`.

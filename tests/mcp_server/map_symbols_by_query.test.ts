@@ -1,8 +1,14 @@
 import { mapSymbolsByQuery } from '../../src/mcp_server/tools/map_symbols_by_query';
-import { aggregateBySymbolsAndImports } from '../../src/utils/elasticsearch';
+import { client } from '../../src/utils/elasticsearch';
 
 jest.mock('../../src/utils/elasticsearch', () => ({
-  aggregateBySymbolsAndImports: jest.fn(),
+  client: {
+    search: jest.fn(),
+  },
+  getLocationsIndexName: (index: string) => `${index}_locations`,
+  getChunksById: jest.fn(),
+  isIndexNotFoundError: jest.fn(),
+  formatIndexNotFoundError: jest.fn(),
   elasticsearchConfig: {
     index: 'semantic-code-search',
   },
@@ -13,216 +19,63 @@ describe('map_symbols_by_query', () => {
     jest.clearAllMocks();
   });
 
-  it('should call aggregateBySymbolsAndImports with the correct DSL query and return the result', async () => {
-    const mockAggregations = {
-      'src/example.ts': {
-        symbols: {
-          function: [
+  it('should map symbols by file using locations + chunk join', async () => {
+    (client.search as jest.Mock).mockResolvedValue({
+      aggregations: {
+        files: {
+          buckets: [
             {
-              name: 'exampleFunction',
-              line: 42,
-            },
-          ],
-        },
-        imports: {
-          module: [
-            {
-              path: './utils',
-              symbols: ['helper', 'utils'],
-            },
-          ],
-        },
-        exports: {
-          named: [
-            {
-              name: 'myFunction',
-            },
-            {
-              name: 'MyClass',
-            },
-          ],
-          default: [
-            {
-              name: 'UserService',
-            },
-          ],
-        },
-      },
-    };
-    (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
-
-    const result = await mapSymbolsByQuery({ kql: 'language: typescript', size: 1000 });
-
-    expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith(
-      {
-        bool: {
-          minimum_should_match: 1,
-          should: [
-            {
-              match: {
-                language: 'typescript',
+              key: 'src/example.ts',
+              chunks: {
+                buckets: [
+                  {
+                    key: 'c1',
+                    sample: { hits: { hits: [{ _source: { startLine: 42 } }] } },
+                  },
+                ],
               },
             },
           ],
         },
       },
-      undefined,
-      1000
-    );
-
-    expect(JSON.parse(result.content[0].text as string)).toEqual(mockAggregations);
-  });
-
-  it('should call aggregateBySymbolsAndImports with the correct DSL query and index', async () => {
-    const mockAggregations = {};
-    (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
-
-    const result = await mapSymbolsByQuery({
-      kql: 'language: typescript',
-      index: 'my-index',
-      size: 1000,
     });
 
-    expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith(
-      {
-        bool: {
-          minimum_should_match: 1,
-          should: [
-            {
-              match: {
-                language: 'typescript',
-              },
-            },
-          ],
-        },
-      },
-      'my-index',
-      1000
-    );
-
-    expect(JSON.parse(result.content[0].text as string)).toEqual(mockAggregations);
-  });
-
-  it('should return exports with all three types (named, default, namespace)', async () => {
-    const mockAggregations = {
-      'src/example.ts': {
-        symbols: {
-          function: [
-            {
-              name: 'exampleFunction',
-              line: 42,
-            },
-          ],
-        },
-        imports: {
-          module: [
-            {
-              path: './utils',
-              symbols: ['helper'],
-            },
-          ],
-        },
-        exports: {
-          named: [
-            {
-              name: 'myFunction',
-            },
-            {
-              name: 'MyClass',
-            },
-          ],
-          default: [
-            {
-              name: 'UserService',
-            },
-          ],
-          namespace: [
-            {
-              name: '*',
-              target: 'src/types',
-            },
-          ],
-        },
-      },
+    const { getChunksById } = jest.requireMock('../../src/utils/elasticsearch') as {
+      getChunksById: jest.Mock;
     };
-    (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
-
-    const result = await mapSymbolsByQuery({ kql: 'language: typescript', size: 1000 });
-
-    const parsedResult = JSON.parse(result.content[0].text as string);
-    expect(parsedResult['src/example.ts'].exports).toEqual({
-      named: [{ name: 'myFunction' }, { name: 'MyClass' }],
-      default: [{ name: 'UserService' }],
-      namespace: [{ name: '*', target: 'src/types' }],
-    });
-  });
-});
-
-describe('map_symbols_by_query with directory parameter', () => {
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should convert directory to KQL correctly', async () => {
-    const mockAggregations = {
-      'src/platform/packages/kbn-esql/parser.ts': {
-        symbols: {
-          function_declaration: [{ name: 'parseQuery', line: 42 }],
-        },
-        imports: {},
+    getChunksById.mockResolvedValue({
+      c1: {
+        language: 'typescript',
+        kind: 'function_declaration',
+        symbols: [{ name: 'exampleFunction', kind: 'function', line: 42 }],
+        imports: [{ path: './utils', type: 'module', symbols: ['helper'] }],
+        exports: [{ name: 'myFunction', type: 'named' }],
       },
-    };
-    (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue(mockAggregations);
-
-    const result = await mapSymbolsByQuery({
-      directory: 'src/platform/packages/kbn-esql',
-      size: 1000,
     });
 
-    // Verify the aggregateBySymbolsAndImports was called with correct DSL
-    expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith(
-      expect.objectContaining({
-        bool: expect.objectContaining({
-          should: expect.arrayContaining([
-            expect.objectContaining({
-              query_string: expect.objectContaining({
-                fields: ['filePath'],
-                query: 'src\\/platform\\/packages\\/kbn\\-esql\\/*',
-              }),
-            }),
-          ]),
-        }),
-      }),
-      undefined,
-      1000
-    );
+    const result = await mapSymbolsByQuery({ kql: 'filePath: "src/example.ts"', size: 1000 });
+    const parsed = JSON.parse(result.content[0].text as string);
 
-    expect(JSON.parse(result.content[0].text as string)).toEqual(mockAggregations);
+    expect(parsed['src/example.ts']).toBeDefined();
+    expect(parsed['src/example.ts'].symbols.function[0]).toEqual({ name: 'exampleFunction', line: 42 });
+    expect(parsed['src/example.ts'].imports.module[0]).toEqual({ path: './utils', symbols: ['helper'] });
+    expect(parsed['src/example.ts'].exports.named[0]).toEqual({ name: 'myFunction' });
   });
 
   it('should remove trailing slashes from directory', async () => {
-    (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue({});
+    (client.search as jest.Mock).mockResolvedValue({ aggregations: { files: { buckets: [] } } });
+    const { getChunksById } = jest.requireMock('../../src/utils/elasticsearch') as { getChunksById: jest.Mock };
+    getChunksById.mockResolvedValue({});
 
     await mapSymbolsByQuery({
       directory: 'src/utils/',
       size: 1000,
     });
 
-    expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith(
+    expect(client.search).toHaveBeenCalledWith(
       expect.objectContaining({
-        bool: expect.objectContaining({
-          should: expect.arrayContaining([
-            expect.objectContaining({
-              query_string: expect.objectContaining({
-                fields: ['filePath'],
-                query: 'src\\/utils\\/*',
-              }),
-            }),
-          ]),
-        }),
-      }),
-      undefined,
-      1000
+        index: 'semantic-code-search_locations',
+      })
     );
   });
 
@@ -238,17 +91,5 @@ describe('map_symbols_by_query with directory parameter', () => {
 
   it('should throw error when neither directory nor kql provided', async () => {
     await expect(mapSymbolsByQuery({ size: 1000 })).rejects.toThrow('Must provide either');
-  });
-
-  it('should work with custom index', async () => {
-    (aggregateBySymbolsAndImports as jest.Mock).mockResolvedValue({});
-
-    await mapSymbolsByQuery({
-      directory: 'src/utils',
-      index: 'custom-index',
-      size: 1000,
-    });
-
-    expect(aggregateBySymbolsAndImports).toHaveBeenCalledWith(expect.anything(), 'custom-index', 1000);
   });
 });

@@ -1,10 +1,35 @@
-## Problem Statement
+## Status
 
-I would like to change the output from `map_symbols_by_query` so the `symbols` and `imports` are grouped by `kind`. 
+This prompt document is **already implemented**: `map_symbols_by_query` returns `symbols`, `imports`, and `exports` grouped by their respective `kind`/`type`.
 
-## Current Behavior
+## Current Behavior (grouped output)
 
-The current output looks something like this:
+Output is a JSON object keyed by `filePath`. Each file contains grouped `symbols`/`imports`/`exports`:
+
+```JSON
+{
+  "src/example.ts": {
+    "symbols": {
+      "function.call": [{ "name": "describe", "line": 10 }],
+      "variable.name": [{ "name": "testCases", "line": 12 }]
+    },
+    "imports": {
+      "module": [{ "path": "@kbn/foo", "symbols": ["bar"] }]
+    },
+    "exports": {
+      "named": [{ "name": "myFunction" }]
+    }
+  }
+}
+```
+
+### Note (locations-first indices)
+
+Per-file association is computed from `<index>_locations` (by aggregating `filePath` → `chunk_id`). Symbols/imports/exports are read from `<index>` and joined via `chunk_id`.
+
+## Historical Behavior (pre-grouped output)
+
+The previous output shape grouped symbols as a single list (each entry had a `kind` field):
 
 ```JSON
 {

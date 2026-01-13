@@ -51,6 +51,7 @@ const indexName = elasticsearchConfig.index;
 
 export interface SymbolInfo {
   name: string;
+  kind?: string;
   line: number;
 }
 
@@ -60,13 +61,9 @@ export interface CodeChunk {
   kind?: string;
   imports?: { path: string; type: 'module' | 'file'; symbols?: string[] }[];
   symbols?: SymbolInfo[];
+  exports?: Array<{ name: string; type: 'named' | 'default' | 'namespace'; target?: string }>;
   containerPath?: string;
-  filePath: string;
-  git_file_hash: string;
-  git_branch: string;
   chunk_hash: string;
-  startLine: number;
-  endLine: number;
   content: string;
   semantic_text: string;
   code_vector?: number[];
@@ -75,7 +72,137 @@ export interface CodeChunk {
 }
 
 export interface SearchResult extends CodeChunk {
+  id: string;
   score: number;
+}
+
+export interface ChunkLocation {
+  chunk_id: string;
+  filePath: string;
+  startLine: number;
+  endLine: number;
+  directoryPath?: string;
+  directoryName?: string;
+  directoryDepth?: number;
+  git_file_hash?: string;
+  git_branch?: string;
+  updated_at: string;
+}
+
+export function getLocationsIndexName(index?: string): string {
+  return `${index || elasticsearchConfig.index}_locations`;
+}
+
+export type ChunkLocationSummary = {
+  filePath: string;
+  startLine: number;
+  endLine: number;
+};
+
+export async function getLocationsForChunkIds(
+  chunkIds: string[],
+  options?: { index?: string; perChunkLimit?: number; query?: QueryDslQueryContainer }
+): Promise<Record<string, ChunkLocationSummary[]>> {
+  const baseIndex = options?.index || elasticsearchConfig.index;
+  const locationsIndex = getLocationsIndexName(baseIndex);
+  const perChunkLimit = Math.max(1, Math.min(50, Math.floor(options?.perChunkLimit ?? 5)));
+
+  const uniqueChunkIds = Array.from(new Set(chunkIds)).filter((id) => typeof id === 'string' && id.length > 0);
+  if (uniqueChunkIds.length === 0) {
+    return {};
+  }
+
+  const exists = await client.indices.exists({ index: locationsIndex });
+  if (!exists) {
+    return {};
+  }
+
+  const response = await client.search({
+    index: locationsIndex,
+    query: {
+      bool: {
+        must: [
+          ...(options?.query ? [options.query] : []),
+          {
+            terms: {
+              chunk_id: uniqueChunkIds,
+            },
+          },
+        ],
+      },
+    },
+    size: 0,
+    aggs: {
+      by_chunk: {
+        terms: {
+          field: 'chunk_id',
+          size: uniqueChunkIds.length,
+        },
+        aggs: {
+          locations: {
+            top_hits: {
+              size: perChunkLimit,
+              _source: ['filePath', 'startLine', 'endLine'],
+              sort: [{ filePath: { order: 'asc' } }, { startLine: { order: 'asc' } }],
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const buckets = (
+    response.aggregations as unknown as {
+      by_chunk?: { buckets?: Array<{ key?: unknown; locations?: { hits?: { hits?: Array<{ _source?: unknown }> } } }> };
+    }
+  )?.by_chunk?.buckets;
+
+  const result: Record<string, ChunkLocationSummary[]> = {};
+  for (const bucket of buckets ?? []) {
+    const chunkId = bucket.key;
+    if (typeof chunkId !== 'string') {
+      continue;
+    }
+    const hits = bucket.locations?.hits?.hits ?? [];
+    const locations: ChunkLocationSummary[] = [];
+    for (const h of hits) {
+      const s = h._source as { filePath?: unknown; startLine?: unknown; endLine?: unknown } | undefined;
+      if (!s) continue;
+      if (typeof s.filePath !== 'string') continue;
+      if (typeof s.startLine !== 'number') continue;
+      if (typeof s.endLine !== 'number') continue;
+      locations.push({ filePath: s.filePath, startLine: s.startLine, endLine: s.endLine });
+    }
+    result[chunkId] = locations;
+  }
+
+  return result;
+}
+
+export async function getChunksById(
+  chunkIds: string[],
+  options?: { index?: string }
+): Promise<Record<string, CodeChunk>> {
+  const baseIndex = options?.index || elasticsearchConfig.index;
+  const uniqueChunkIds = Array.from(new Set(chunkIds)).filter((id) => typeof id === 'string' && id.length > 0);
+  if (uniqueChunkIds.length === 0) {
+    return {};
+  }
+
+  const response = await client.mget<CodeChunk>({
+    index: baseIndex,
+    ids: uniqueChunkIds,
+  });
+
+  const result: Record<string, CodeChunk> = {};
+  for (const doc of response.docs) {
+    if (!('found' in doc) || !doc.found) continue;
+    if (typeof doc._id !== 'string') continue;
+    if (!doc._source) continue;
+    result[doc._id] = doc._source as CodeChunk;
+  }
+
+  return result;
 }
 
 /**
@@ -98,10 +225,13 @@ export async function searchCodeChunks(query: string): Promise<SearchResult[]> {
       },
     },
   });
-  return response.hits.hits.map((hit: SearchHit<CodeChunk>) => ({
-    ...(hit._source as CodeChunk),
-    score: hit._score ?? 0,
-  }));
+  return response.hits.hits
+    .filter((hit): hit is SearchHit<CodeChunk> & { _id: string } => typeof hit._id === 'string' && hit._id.length > 0)
+    .map((hit) => ({
+      id: hit._id,
+      ...(hit._source as CodeChunk),
+      score: hit._score ?? 0,
+    }));
 }
 
 export interface ImportInfo {
@@ -432,8 +562,9 @@ export async function getAvailableIndices(): Promise<IndexInfo[]> {
 
       for (const alias of repoAliases) {
         try {
+          const locationsIndex = getLocationsIndexName(alias);
           const searchResponse = await client.search({
-            index: alias,
+            index: locationsIndex,
             size: 0,
             aggs: {
               filesIndexed: { cardinality: { field: 'filePath' } },
