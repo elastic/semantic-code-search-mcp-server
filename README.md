@@ -10,10 +10,12 @@ You must index your code base with the Semantic Code Search Indexer found here: 
 
 This MCP server expects the **locations-first** index model from indexer PR `elastic/semantic-code-search-indexer#135`:
 
-- `<index>` stores **content-deduplicated chunk documents** (semantic search + metadata).
-- `<index>_locations` stores **one document per chunk occurrence** (file path + line ranges + directory/git metadata) and references chunks by `chunk_id`.
+- `<alias>` stores **content-deduplicated chunk documents** (semantic search + metadata).
+- `<alias>_locations` stores **one document per chunk occurrence** (file path + line ranges + directory/git metadata) and references chunks by `chunk_id`.
 
-Several tools query `<index>_locations` and join back to `<index>` via `chunk_id` (typically using `mget`).
+Several tools query `<alias>_locations` and join back to `<alias>` via `chunk_id` (typically using `mget`).
+
+The indexer also maintains a stable settings index, `<alias>_settings`, for commit state and maintenance locking. This MCP server does not query `<alias>_settings` directly, but you should expect it to exist for any indexed alias.
 
 ## Running with Docker
 
@@ -92,7 +94,7 @@ For agents that connect over STDIO, you need to configure them to run the Docker
         "-i",
         "-e", "ELASTICSEARCH_CLOUD_ID=<your_cloud_id>",
         "-e", "ELASTICSEARCH_API_KEY=<your_api_key>",
-        "-e", "ELASTICSEARCH_INDEX=<your_index>",
+        "-e", "ELASTICSEARCH_INDEX=<your_alias>",
         "simianhacker/semantic-code-search-mcp-server",
         "node", "dist/src/mcp_server/bin.js", "stdio"
       ]
@@ -204,4 +206,4 @@ Configuration is managed via environment variables in a `.env` file.
 | --- | --- | --- |
 | `ELASTICSEARCH_CLOUD_ID` | The Cloud ID for your Elastic Cloud instance. | |
 | `ELASTICSEARCH_API_KEY` | An API key for Elasticsearch authentication. | |
-| `ELASTICSEARCH_INDEX` | The name of the Elasticsearch index to use. | `semantic-code-search` |
+| `ELASTICSEARCH_INDEX` | The **alias name** to query (stable public name). The MCP server will also query `<alias>_locations`. | `semantic-code-search` |

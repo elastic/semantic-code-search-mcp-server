@@ -20,10 +20,10 @@ Use the `kql` parameter for complex queries:
 
 This MCP server expects the locations-first model:
 
-- `<index>`: content-deduplicated chunk documents (symbols/imports/exports live here)
-- `<index>_locations`: one document per chunk occurrence (filePath/directoryPath live here)
+- `<alias>`: content-deduplicated chunk documents (symbols/imports/exports live here)
+- `<alias>_locations`: one document per chunk occurrence (filePath/directoryPath live here)
 
-When your KQL includes file-level fields (like `filePath`), those predicates are evaluated against `<index>_locations` and then joined back to `<index>` via `chunk_id`.
+When your KQL includes file-level fields (like `filePath`), those predicates are evaluated against `<alias>_locations` and then joined back to `<alias>` via `chunk_id`.
 
 ## Typical Workflow
 1. `discover_directories` → finds "src/platform/packages/kbn-esql-utils"

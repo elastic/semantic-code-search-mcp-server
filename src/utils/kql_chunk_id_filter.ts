@@ -166,7 +166,7 @@ async function evalNode(node: KueryNode, universe: Set<string>, baseIndex: strin
       'Unsupported KQL expression: a single clause references both chunk fields and location fields. ' +
         `Chunk fields: [${chunkFields.join(', ') || '<none>'}]. ` +
         `Location fields: [${locationFields.join(', ') || '<none>'}]. ` +
-        'Please rewrite as separate clauses (e.g. (chunk_field:...) AND (location_field:...)) so it can be evaluated across <index> and <index>_locations.'
+        'Please rewrite as separate clauses (e.g. (chunk_field:...) AND (location_field:...)) so it can be evaluated across <alias> and <alias>_locations.'
     );
   }
 

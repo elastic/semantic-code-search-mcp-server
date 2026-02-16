@@ -89,8 +89,10 @@ export interface ChunkLocation {
   updated_at: string;
 }
 
+const LOCATIONS_INDEX_SUFFIX = '_locations';
+
 export function getLocationsIndexName(index?: string): string {
-  return `${index || elasticsearchConfig.index}_locations`;
+  return `${index || elasticsearchConfig.index}${LOCATIONS_INDEX_SUFFIX}`;
 }
 
 export type ChunkLocationSummary = {
@@ -545,7 +547,7 @@ function findClosestIndex(requestedIndex: string, availableIndices: IndexInfo[])
 export async function getAvailableIndices(): Promise<IndexInfo[]> {
   try {
     const aliasesResponse = await client.indices.getAlias({
-      name: '*-repo',
+      name: `*${LOCATIONS_INDEX_SUFFIX}`,
     });
 
     if (!aliasesResponse || Object.keys(aliasesResponse).length === 0) {
@@ -553,31 +555,39 @@ export async function getAvailableIndices(): Promise<IndexInfo[]> {
     }
 
     const indices: IndexInfo[] = [];
-    const indexEntries = Object.entries(aliasesResponse);
 
-    for (const [, indexInfo] of indexEntries) {
+    const locationAliases = new Set<string>();
+    for (const [, indexInfo] of Object.entries(aliasesResponse)) {
       if (!indexInfo.aliases) continue;
-
-      const repoAliases = Object.keys(indexInfo.aliases).filter((alias) => alias.endsWith('-repo'));
-
-      for (const alias of repoAliases) {
-        try {
-          const locationsIndex = getLocationsIndexName(alias);
-          const searchResponse = await client.search({
-            index: locationsIndex,
-            size: 0,
-            aggs: {
-              filesIndexed: { cardinality: { field: 'filePath' } },
-            },
-          });
-
-          const aggregations = searchResponse.aggregations as { filesIndexed?: { value?: number } } | undefined;
-          const fileCount = aggregations?.filesIndexed?.value || 0;
-          indices.push({ name: alias, fileCount: Math.round(fileCount) });
-        } catch {
-          // Skip indices we can't query
-          continue;
+      for (const alias of Object.keys(indexInfo.aliases)) {
+        if (alias.endsWith(LOCATIONS_INDEX_SUFFIX)) {
+          locationAliases.add(alias);
         }
+      }
+    }
+
+    const baseAliases = Array.from(locationAliases)
+      .map((a) => a.slice(0, -LOCATIONS_INDEX_SUFFIX.length))
+      .filter((a) => a.length > 0)
+      .sort((a, b) => a.localeCompare(b));
+
+    for (const alias of baseAliases) {
+      try {
+        const locationsIndex = getLocationsIndexName(alias);
+        const searchResponse = await client.search({
+          index: locationsIndex,
+          size: 0,
+          aggs: {
+            filesIndexed: { cardinality: { field: 'filePath' } },
+          },
+        });
+
+        const aggregations = searchResponse.aggregations as { filesIndexed?: { value?: number } } | undefined;
+        const fileCount = aggregations?.filesIndexed?.value || 0;
+        indices.push({ name: alias, fileCount: Math.round(fileCount) });
+      } catch {
+        // Skip indices we can't query
+        continue;
       }
     }
 
