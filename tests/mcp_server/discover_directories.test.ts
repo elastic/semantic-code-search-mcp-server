@@ -67,7 +67,9 @@ describe('discover_directories', () => {
       })
     );
 
-    const output = result.content[0].text as string;
+    const first = result.content[0];
+    if (first?.type !== 'text') throw new Error('Expected text content');
+    const output = first.text;
     expect(output).toContain('Found 1 significant directories');
     expect(output).toContain('src/utils');
     expect(output).toContain('Files**: 10');
@@ -98,7 +100,9 @@ describe('discover_directories', () => {
       query: 'nonexistent',
     } as Parameters<typeof discoverDirectories>[0]);
 
-    const output = result.content[0].text as string;
+    const first = result.content[0];
+    if (first?.type !== 'text') throw new Error('Expected text content');
+    const output = first.text;
     expect(output).toBe('No significant directories found matching your criteria.');
   });
 

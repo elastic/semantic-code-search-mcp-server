@@ -126,7 +126,9 @@ describe('semantic_code_search', () => {
       },
     ];
 
-    expect(JSON.parse(result.content[0].text as string)).toEqual(expectedContent);
+    const first = result.content[0];
+    if (first?.type !== 'text') throw new Error('Expected text content');
+    expect(JSON.parse(first.text)).toEqual(expectedContent);
   });
 
   it('should attach location summaries when available', async () => {
@@ -158,7 +160,9 @@ describe('semantic_code_search', () => {
       size: 10,
     });
 
-    const parsed = JSON.parse(result.content[0].text as string) as Array<{ id: string; locations: unknown[] }>;
+    const first = result.content[0];
+    if (first?.type !== 'text') throw new Error('Expected text content');
+    const parsed = JSON.parse(first.text) as Array<{ id: string; locations: unknown[] }>;
     expect(parsed[0]?.id).toBe('c1');
     expect(parsed[0]?.locations).toEqual([{ filePath: 'src/a.ts', startLine: 10, endLine: 12 }]);
   });
@@ -209,8 +213,10 @@ describe('semantic_code_search', () => {
     });
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain("The index 'nonexistent-index' was not found.");
-    expect(result.content[0].text).toContain('Available indices:');
+    const first = result.content[0];
+    if (first?.type !== 'text') throw new Error('Expected text content');
+    expect(first.text).toContain("The index 'nonexistent-index' was not found.");
+    expect(first.text).toContain('Available indices:');
   });
 
   it('should rethrow non-index-not-found errors', async () => {

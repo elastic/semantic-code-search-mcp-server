@@ -54,7 +54,9 @@ describe('map_symbols_by_query', () => {
     });
 
     const result = await mapSymbolsByQuery({ kql: 'filePath: "src/example.ts"', size: 1000 });
-    const parsed = JSON.parse(result.content[0].text as string);
+    const first = result.content[0];
+    if (first?.type !== 'text') throw new Error('Expected text content');
+    const parsed = JSON.parse(first.text);
 
     expect(parsed['src/example.ts']).toBeDefined();
     expect(parsed['src/example.ts'].symbols.function[0]).toEqual({ name: 'exampleFunction', line: 42 });

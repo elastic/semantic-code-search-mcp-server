@@ -55,7 +55,9 @@ describe('document_symbols', () => {
     });
 
     const result = await documentSymbols({ filePath });
-    const symbols = JSON.parse(result.content[0].text as string);
+    const first = result.content[0];
+    if (first?.type !== 'text') throw new Error('Expected text content');
+    const symbols = JSON.parse(first.text);
 
     expect(symbols).toEqual([
       { name: 'semanticCodeSearchSchema', kind: 'variable', line: 10 },

@@ -5,6 +5,7 @@ import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import fs from 'fs';
 import path from 'path';
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import { randomUUID } from 'crypto';
 
 import { semanticCodeSearch, semanticCodeSearchSchema } from './tools/semantic_code_search';
@@ -19,6 +20,13 @@ import {
   createStartChainOfInvestigationHandler,
   startChainOfInvestigationSchema,
 } from './prompts/chain_of_investigation';
+
+import { authMiddleware } from '../middleware/auth';
+import { authRouter } from '../routes/auth';
+import { oauthRouter } from '../routes/oauth';
+import { oidcConfig } from '../config';
+import { getOIDCDiscovery } from '../lib/oidc';
+import { logger } from '../lib/logger';
 
 /**
  * The main MCP server class.
@@ -159,7 +167,53 @@ export class McpServer {
   public async startHttp(port: number) {
     const app = express();
     app.use(express.json());
+    app.use(express.urlencoded({ extended: true })); // For OAuth token endpoint
+    app.use(cookieParser());
     const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
+
+    // Auth routes (public, no auth required)
+    app.use('/auth', authRouter);
+
+    // OAuth routes for Dynamic Client Registration (public, no auth required)
+    app.use('/oauth', oauthRouter);
+
+    // OAuth discovery endpoint (public, no auth required)
+    app.get('/.well-known/oauth-authorization-server', async (req, res) => {
+      if (!oidcConfig.enabled || !oidcConfig.issuer) {
+        res.status(404).json({
+          error: 'OIDC authentication is not enabled',
+        });
+        return;
+      }
+
+      try {
+        const discovery = await getOIDCDiscovery();
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+        res.json({
+          issuer: baseUrl,
+          authorization_endpoint: `${baseUrl}/oauth/authorize`,
+          token_endpoint: `${baseUrl}/oauth/token`,
+          registration_endpoint: `${baseUrl}/oauth/register`,
+          jwks_uri: discovery.jwks_uri,
+          scopes_supported: discovery.scopes_supported || ['openid', 'profile', 'email'],
+          response_types_supported: discovery.response_types_supported || ['code'],
+          grant_types_supported: discovery.grant_types_supported || ['authorization_code', 'refresh_token'],
+          token_endpoint_auth_methods_supported: ['client_secret_post', 'none'],
+          code_challenge_methods_supported: ['S256'],
+        });
+      } catch (error) {
+        logger.error('Discovery', 'Failed to fetch OIDC discovery', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+        res.status(500).json({
+          error: 'Failed to fetch OIDC discovery information',
+        });
+      }
+    });
+
+    // Apply auth middleware to all /mcp routes
+    app.use('/mcp', authMiddleware);
 
     app.post('/mcp', async (req, res) => {
       const sessionId = req.headers['mcp-session-id'] as string | undefined;
@@ -217,7 +271,13 @@ export class McpServer {
     app.delete('/mcp', handleSessionRequest);
 
     app.listen(port, () => {
-      console.log(`MCP HTTP server listening on port ${port}`);
+      logger.info('Server', `MCP HTTP server listening on port ${port}`);
+      if (oidcConfig.enabled) {
+        logger.info('Server', 'OIDC authentication enabled', {
+          issuer: oidcConfig.issuer,
+          required_claims: oidcConfig.requiredClaims.join(', '),
+        });
+      }
     });
   }
 }

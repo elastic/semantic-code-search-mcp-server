@@ -37,6 +37,24 @@ docker run --rm -p 3000:3000 \
 
 Replace `<your_elasticsearch_endpoint>` with the actual endpoint of your Elasticsearch instance.
 
+**Optional: OIDC Authentication**
+
+For centrally-deployed servers, you can enable OIDC authentication to secure access:
+
+```bash
+docker run --rm -p 3000:3000 \
+  -e ELASTICSEARCH_ENDPOINT=<your_elasticsearch_endpoint> \
+  -e OIDC_AUTH_ENABLED=true \
+  -e OIDC_ISSUER=https://your-domain.okta.com/oauth2/default \
+  -e OIDC_CLIENT_ID=<your-client-id> \
+  -e OIDC_CLIENT_SECRET=<your-client-secret> \
+  -e OIDC_REDIRECT_URI=http://localhost:3000/auth/callback \
+  -e OIDC_COOKIE_SECRET=$(openssl rand -base64 32) \
+  simianhacker/semantic-code-search-mcp-server
+```
+
+Users can authenticate via `/auth/login` endpoint.
+
 ### STDIO Mode
 
 This mode is useful for running the server as a local process that an agent can communicate with over `stdin` and `stdout`.
@@ -200,8 +218,29 @@ The MCP server provides the following tools:
 
 Configuration is managed via environment variables in a `.env` file.
 
+### Elasticsearch Configuration
+
 | Variable | Description | Default |
 | --- | --- | --- |
 | `ELASTICSEARCH_CLOUD_ID` | The Cloud ID for your Elastic Cloud instance. | |
 | `ELASTICSEARCH_API_KEY` | An API key for Elasticsearch authentication. | |
 | `ELASTICSEARCH_INDEX` | The name of the Elasticsearch index to use. | `semantic-code-search` |
+
+### OIDC Authentication (HTTP Mode Only)
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `OIDC_AUTH_ENABLED` | Enable OIDC authentication. | `false` |
+| `OIDC_ISSUER` | Your OIDC provider's issuer URL. | |
+| `OIDC_CLIENT_ID` | OAuth client ID. | |
+| `OIDC_CLIENT_SECRET` | OAuth client secret. | |
+| `OIDC_REDIRECT_URI` | OAuth redirect URI (e.g., http://localhost:3000/auth/callback). | |
+| `OIDC_COOKIE_SECRET` | Secret for signing session cookies (generate with openssl rand -base64 32). | |
+| `OIDC_AUDIENCE` | Expected audience claim in JWT tokens (optional). | |
+| `OIDC_REQUIRED_CLAIMS` | Comma-separated list of required claims. | `sub` |
+
+Authentication endpoints:
+- `GET /auth/login` - Initiate OAuth login
+- `GET /auth/callback` - OAuth callback handler
+- `GET /auth/logout` - Clear session
+- `GET /auth/me` - Get current user info

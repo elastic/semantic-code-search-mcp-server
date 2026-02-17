@@ -1,6 +1,16 @@
 import { symbolAnalysis } from '../../src/mcp_server/tools/symbol_analysis';
 import { client } from '../../src/utils/elasticsearch';
 
+jest.mock('../../src/config', () => ({
+  elasticsearchConfig: {
+    index: 'semantic-code-search',
+  },
+  oidcConfig: {
+    enabled: false,
+    requiredClaims: ['sub'],
+  },
+}));
+
 jest.mock('../../src/utils/elasticsearch', () => ({
   client: {
     search: jest.fn(),
@@ -64,7 +74,9 @@ describe('symbol_analysis', () => {
     });
 
     const result = await symbolAnalysis({ symbolName: 'mySymbol' });
-    const report = JSON.parse(result.content[0].text as string);
+    const first = result.content[0];
+    if (first?.type !== 'text') throw new Error('Expected text content');
+    const report = JSON.parse(first.text);
 
     expect(client.search).toHaveBeenCalledTimes(2);
     expect((client.search as jest.Mock).mock.calls[0]?.[0]).toEqual(

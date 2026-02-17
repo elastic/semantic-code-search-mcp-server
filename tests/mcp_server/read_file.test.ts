@@ -97,8 +97,10 @@ describe('read_file_from_chunks', () => {
       .mockResolvedValueOnce({ hits: { hits: [] } });
 
     const result = await readFile({ filePaths: ['missing.ts'] });
-    expect(result.content[0].text).toContain('File: missing.ts');
-    expect(result.content[0].text).toContain('File not found in index');
+    const first = result.content[0];
+    if (first?.type !== 'text') throw new Error('Expected text content');
+    expect(first.text).toContain('File: missing.ts');
+    expect(first.text).toContain('File not found in index');
   });
 
   it('should return helpful error message when index is not found', async () => {
@@ -124,7 +126,9 @@ describe('read_file_from_chunks', () => {
     });
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain("The index 'nonexistent-index' was not found.");
-    expect(result.content[0].text).toContain('Available indices:');
+    const first = result.content[0];
+    if (first?.type !== 'text') throw new Error('Expected text content');
+    expect(first.text).toContain("The index 'nonexistent-index' was not found.");
+    expect(first.text).toContain('Available indices:');
   });
 });
