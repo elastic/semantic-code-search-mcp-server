@@ -37,8 +37,8 @@
   "devDependencies": {
     "@types/jest": "30.0.0",
     "@types/node": "24.3.0",
-    "@typescript-eslint/eslint-plugin": "8.40.0",
-    "@typescript-eslint/parser": "8.40.0",
+    "@typescript-eslint/eslint-plugin": "8.55.0",
+    "@typescript-eslint/parser": "8.55.0",
     "dotenv-cli": "10.0.0",
     "eslint": "9.33.0",
     "eslint-config-prettier": "10.1.8",
@@ -50,6 +50,6 @@
     "ts-jest": "29.4.1",
     "ts-node": "10.9.2",
     "typescript": "5.9.2",
-    "typescript-eslint": "8.40.0"
+    "typescript-eslint": "8.55.0"
   }
 }
