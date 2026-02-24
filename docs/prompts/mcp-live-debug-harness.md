@@ -29,7 +29,7 @@ Crucially, the Harness will use a file watcher for live reloading. When a change
             "content": [
               {
                 "type": "text",
-                "text": "Index: beats-repo\n- Files: 10,460 total..."
+                "text": "Index: beats\n- Files: 10,460 total..."
               }
             ]
           },

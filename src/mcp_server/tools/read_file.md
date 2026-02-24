@@ -35,4 +35,4 @@ process.exit(1)
 
 **Note:** The reconstruction is based on indexed code chunks. While it aims to be accurate, it may not be a perfect 1:1 representation of the original file. Requires the same `index` used in the initial `semantic_code_search` to maintain context.
 
-**Note (locations-first indices):** This tool reconstructs files by querying `<index>_locations` for `(filePath, startLine, endLine, chunk_id)` and then fetching the chunk text from the primary index via `chunk_id`.
+**Note (locations-first indices):** This tool reconstructs files by querying `<alias>_locations` for `(filePath, startLine, endLine, chunk_id)` and then fetching the chunk text from the primary index via `chunk_id`.

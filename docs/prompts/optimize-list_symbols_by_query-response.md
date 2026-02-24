@@ -25,7 +25,7 @@ Output is a JSON object keyed by `filePath`. Each file contains grouped `symbols
 
 ### Note (locations-first indices)
 
-Per-file association is computed from `<index>_locations` (by aggregating `filePath` → `chunk_id`). Symbols/imports/exports are read from `<index>` and joined via `chunk_id`.
+Per-file association is computed from `<alias>_locations` (by aggregating `filePath` → `chunk_id`). Symbols/imports/exports are read from `<alias>` and joined via `chunk_id`.
 
 ## Historical Behavior (pre-grouped output)
 

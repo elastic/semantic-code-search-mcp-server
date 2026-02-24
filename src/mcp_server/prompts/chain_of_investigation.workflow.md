@@ -18,10 +18,10 @@
 
 This MCP server uses a locations-first Elasticsearch model:
 
-- Chunk-level fields (e.g. `language`, `kind`, `content`, `symbols`) live in `<index>`.
-- File-level fields (e.g. `filePath`, `directoryPath`, `startLine`, `endLine`) live in `<index>_locations`.
+- Chunk-level fields (e.g. `language`, `kind`, `content`, `symbols`) live in `<alias>`.
+- File-level fields (e.g. `filePath`, `directoryPath`, `startLine`, `endLine`) live in `<alias>_locations`.
 
-Implication: a KQL predicate like `filePath: *test*` is evaluated via `<index>_locations` and then joined back to `<index>` via `chunk_id`.
+Implication: a KQL predicate like `filePath: *test*` is evaluated via `<alias>_locations` and then joined back to `<alias>` via `chunk_id`.
 
 ### semantic_code_search
 **For discovering symbols**
