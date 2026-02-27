@@ -2,12 +2,12 @@ import { z } from 'zod';
 import { fromKueryExpression, toElasticsearchQuery } from '../../../libs/es-query';
 import {
   client,
+  elasticsearchConfig,
   formatIndexNotFoundError,
   getChunksById,
   getLocationsIndexName,
   isIndexNotFoundError,
 } from '../../utils/elasticsearch';
-import { elasticsearchConfig } from '../../config';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 
 /**

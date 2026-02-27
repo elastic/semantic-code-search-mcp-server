@@ -1,11 +1,15 @@
 import { McpServer as SdkServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import fs from 'fs';
 import path from 'path';
 import express from 'express';
-import { randomUUID } from 'crypto';
+import type http from 'http';
+
+import { loadOauthConfig, oauthEnabled } from '../config';
+import { createOAuthRouter } from '../auth/router';
+import { bearerAuth } from '../auth/middleware';
+import { createOAuthStorage } from '../auth/storage';
 
 import { semanticCodeSearch, semanticCodeSearchSchema } from './tools/semantic_code_search';
 import { mapSymbolsByQuery, mapSymbolsByQuerySchema } from './tools/map_symbols_by_query';
@@ -14,6 +18,7 @@ import { readFile, readFileSchema } from './tools/read_file';
 import { documentSymbols, documentSymbolsSchema } from './tools/document_symbols';
 import { listIndices, listIndicesSchema } from './tools/list_indices';
 import { discoverDirectories, discoverDirectoriesSchema } from './tools/discover_directories';
+import { whoami, whoamiSchema } from './tools/whoami';
 
 import {
   createStartChainOfInvestigationHandler,
@@ -29,17 +34,23 @@ import {
  */
 export class McpServer {
   private server: SdkServer;
+  private httpServer: http.Server | null = null;
 
   constructor() {
-    this.server = new SdkServer({
+    this.server = this.createSdkServer();
+  }
+
+  private createSdkServer(): SdkServer {
+    const server = new SdkServer({
       name: 'semantic-code-search',
       version: '0.0.1',
       title: 'MCP Server for the Semantic Code Search Indexer',
     });
-    this.registerTools();
+    this.registerTools(server);
+    return server;
   }
 
-  private registerTools() {
+  private registerTools(server: SdkServer) {
     const semanticCodeSearchDescription = fs.readFileSync(
       path.join(__dirname, 'tools/semantic_code_search.md'),
       'utf-8'
@@ -50,7 +61,7 @@ export class McpServer {
       'utf-8'
     );
 
-    this.server.registerTool(
+    server.registerTool(
       'semantic_code_search',
       {
         description: semanticCodeSearchDescription,
@@ -59,7 +70,7 @@ export class McpServer {
       semanticCodeSearch
     );
 
-    this.server.registerTool(
+    server.registerTool(
       'map_symbols_by_query',
       {
         description: mapSymbolsByQueryDescription,
@@ -68,7 +79,7 @@ export class McpServer {
       mapSymbolsByQuery
     );
 
-    this.server.registerTool(
+    server.registerTool(
       'symbol_analysis',
       {
         description: symbolAnalysisDescription,
@@ -78,7 +89,7 @@ export class McpServer {
     );
 
     const readFileDescription = fs.readFileSync(path.join(__dirname, 'tools/read_file.md'), 'utf-8');
-    this.server.registerTool(
+    server.registerTool(
       'read_file_from_chunks',
       {
         description: readFileDescription,
@@ -88,7 +99,7 @@ export class McpServer {
     );
 
     const documentSymbolsDescription = fs.readFileSync(path.join(__dirname, 'tools/document_symbols.md'), 'utf-8');
-    this.server.registerTool(
+    server.registerTool(
       'document_symbols',
       {
         description: documentSymbolsDescription,
@@ -98,7 +109,7 @@ export class McpServer {
     );
 
     const listIndicesDescription = fs.readFileSync(path.join(__dirname, 'tools/list_indices.md'), 'utf-8');
-    this.server.registerTool(
+    server.registerTool(
       'list_indices',
       {
         description: listIndicesDescription,
@@ -111,7 +122,7 @@ export class McpServer {
       path.join(__dirname, 'tools/discover_directories.md'),
       'utf-8'
     );
-    this.server.registerTool(
+    server.registerTool(
       'discover_directories',
       {
         description: discoverDirectoriesDescription,
@@ -120,12 +131,24 @@ export class McpServer {
       discoverDirectories
     );
 
+    if (oauthEnabled) {
+      const whoamiDescription = fs.readFileSync(path.join(__dirname, 'tools/whoami.md'), 'utf-8');
+      server.registerTool(
+        'whoami',
+        {
+          description: whoamiDescription,
+          inputSchema: whoamiSchema.shape,
+        },
+        whoami
+      );
+    }
+
     const chainOfInvestigationWorkflowMarkdown = fs.readFileSync(
       path.join(__dirname, 'prompts/chain_of_investigation.workflow.md'),
       'utf-8'
     );
 
-    this.server.registerPrompt(
+    server.registerPrompt(
       'StartInvestigation',
       {
         description:
@@ -159,65 +182,50 @@ export class McpServer {
   public async startHttp(port: number) {
     const app = express();
     app.use(express.json());
-    const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
+    app.use(express.urlencoded({ extended: false }));
+    if (oauthEnabled) {
+      app.set('trust proxy', true);
+    }
 
-    app.post('/mcp', async (req, res) => {
-      const sessionId = req.headers['mcp-session-id'] as string | undefined;
-      let transport: StreamableHTTPServerTransport;
+    const oauthCfg = oauthEnabled ? loadOauthConfig() : null;
+    if (oauthEnabled && oauthCfg) {
+      const storage = createOAuthStorage(oauthCfg);
+      app.use(createOAuthRouter(oauthCfg, storage));
+    }
 
-      if (sessionId && transports[sessionId]) {
-        transport = transports[sessionId];
-      } else if (!sessionId && isInitializeRequest(req.body)) {
-        transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => randomUUID(),
-          onsessioninitialized: (newSessionId) => {
-            transports[newSessionId] = transport;
-          },
-        });
+    const maybeAuth = oauthEnabled && oauthCfg ? bearerAuth(oauthCfg) : undefined;
 
-        transport.onclose = () => {
-          if (transport.sessionId) {
-            delete transports[transport.sessionId];
-          }
-        };
-        await this.server.connect(transport);
-      } else {
-        res.status(400).json({
-          jsonrpc: '2.0',
-          error: {
-            code: -32000,
-            message: 'Bad Request: No valid session ID provided',
-          },
-          id: null,
-        });
-        return;
+    app.post('/mcp', ...(maybeAuth ? [maybeAuth] : []), async (req, res) => {
+      // Stateless Streamable HTTP: no Mcp-Session-Id; create transport/server per request.
+      const server = this.createSdkServer();
+      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+
+      try {
+        await server.connect(transport);
+        await transport.handleRequest(req, res, req.body);
+      } catch {
+        res.status(500).send('Internal Server Error');
       }
-
-      await transport.handleRequest(req, res, req.body);
     });
 
-    /**
-     * A reusable handler for GET and DELETE requests that require a session ID.
-     *
-     * @param req The Express request object.
-     * @param res The Express response object.
-     */
-    const handleSessionRequest = async (req: express.Request, res: express.Response) => {
-      const sessionId = req.headers['mcp-session-id'] as string | undefined;
-      if (!sessionId || !transports[sessionId]) {
-        res.status(400).send('Invalid or missing session ID');
-        return;
-      }
+    // This server does not provide a standalone GET SSE stream in stateless mode.
+    // Clients should use POST responses (JSON or SSE) only.
+    const methodNotAllowed = (_req: express.Request, res: express.Response) => res.sendStatus(405);
+    if (maybeAuth) {
+      app.get('/mcp', maybeAuth, methodNotAllowed);
+      app.delete('/mcp', maybeAuth, methodNotAllowed);
+    } else {
+      app.get('/mcp', methodNotAllowed);
+      app.delete('/mcp', methodNotAllowed);
+    }
 
-      const transport = transports[sessionId];
-      await transport.handleRequest(req, res);
-    };
-
-    app.get('/mcp', handleSessionRequest);
-    app.delete('/mcp', handleSessionRequest);
-
-    app.listen(port, () => {
-      console.log(`MCP HTTP server listening on port ${port}`);
+    await new Promise<void>((_resolve, reject) => {
+      this.httpServer = app.listen(port, () => {
+        console.log(`MCP HTTP server listening on port ${port}`);
+      });
+      this.httpServer.on('error', (err) => reject(err));
+      // Intentionally never resolve: keeps the process alive in CLI usage.
+      // The server stays up until process termination or explicit close().
     });
   }
 }

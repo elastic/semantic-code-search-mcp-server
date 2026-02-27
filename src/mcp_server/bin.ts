@@ -7,16 +7,26 @@
  */
 import { McpServer } from './server';
 
-const serverType = process.argv[2] || 'stdio';
+async function main() {
+  const serverType = process.argv[2] || 'stdio';
+  const server = new McpServer();
 
-const server = new McpServer();
+  if (serverType === 'stdio') {
+    await server.start();
+    return;
+  }
 
-if (serverType === 'stdio') {
-  server.start();
-} else if (serverType === 'http') {
-  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-  server.startHttp(port);
-} else {
+  if (serverType === 'http') {
+    const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+    await server.startHttp(port);
+    return;
+  }
+
   console.error(`Unknown server type: ${serverType}`);
-  process.exit(1);
+  process.exitCode = 1;
 }
+
+void main().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});
