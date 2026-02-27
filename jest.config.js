@@ -4,5 +4,5 @@ module.exports = {
   testEnvironment: 'node',
   watchman: false,
   testMatch: ['**/tests/**/*.test.ts'],
-  modulePathIgnorePatterns: ['<rootDir>/.repos/'],
+  modulePathIgnorePatterns: ['<rootDir>/.repos/', '<rootDir>/github-mcp-server/'],
 };
