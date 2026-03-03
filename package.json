@@ -30,6 +30,7 @@
     "@types/moment-timezone": "^0.5.13",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "jose": "^5.10.0",
     "lodash": "^4.17.21",
     "moment": "^2.30.1",
     "moment-timezone": "^0.6.0"
