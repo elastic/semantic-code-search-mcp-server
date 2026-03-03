@@ -7,6 +7,9 @@ import path from 'path';
 import express from 'express';
 import { randomUUID } from 'crypto';
 
+import { oauthConfig } from '../config';
+import { setupOAuth } from './auth/oauth';
+
 import { semanticCodeSearch, semanticCodeSearchSchema } from './tools/semantic_code_search';
 import { mapSymbolsByQuery, mapSymbolsByQuerySchema } from './tools/map_symbols_by_query';
 import { symbolAnalysis, symbolAnalysisSchema } from './tools/symbol_analysis';
@@ -154,11 +157,37 @@ export class McpServer {
    * creates an Express server and uses the `StreamableHTTPServerTransport`
    * to handle MCP requests over HTTP.
    *
+   * When MCP_OAUTH_ENABLED=true, the server enforces OAuth 2.1 Bearer token
+   * authentication on all /mcp routes and exposes the standard
+   * /.well-known/oauth-protected-resource metadata endpoint (RFC9728).
+   *
    * @param port The port to listen on.
+   * @param serverUrl The canonical URL of this server. Used in OAuth metadata
+   *   and audience validation. Defaults to http://localhost:<port>.
    */
-  public async startHttp(port: number) {
+  public async startHttp(port: number, serverUrl?: string) {
+    const resolvedServerUrl = serverUrl ?? `http://localhost:${port}`;
     const app = express();
     app.use(express.json());
+
+    app.use((req, _res, next) => {
+      console.error(`[http] ${req.method} ${req.path} auth=${req.headers.authorization?.slice(0, 20) ?? 'none'}`);
+      next();
+    });
+
+    if (oauthConfig.enabled) {
+      if (!oauthConfig.issuer) {
+        throw new Error(
+          'MCP_OAUTH_ISSUER is required when MCP_OAUTH_ENABLED=true. ' +
+            'Set it to your OIDC provider issuer URL, e.g. https://dev-xxx.okta.com/oauth2/default'
+        );
+      }
+      await setupOAuth(app, oauthConfig, resolvedServerUrl);
+      console.error(
+        `[oauth] OAuth enabled (issuer: ${oauthConfig.issuer}). ` +
+          `Protected Resource Metadata: ${resolvedServerUrl}/.well-known/oauth-protected-resource`
+      );
+    }
     const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
 
     app.post('/mcp', async (req, res) => {
