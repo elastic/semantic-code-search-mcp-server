@@ -5,6 +5,7 @@ import {
   getOAuthProtectedResourceMetadataUrl,
 } from '@modelcontextprotocol/sdk/server/auth/router.js';
 import { requireBearerAuth } from '@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js';
+import { InvalidTokenError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { checkResourceAllowed } from '@modelcontextprotocol/sdk/shared/auth-utils.js';
 import type { OAuthMetadata } from '@modelcontextprotocol/sdk/shared/auth.js';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
@@ -50,7 +51,7 @@ async function discoverOidcEndpoints(issuer: string): Promise<OidcDiscovery> {
   );
 }
 
-function buildIntrospectionVerifier(
+export function buildIntrospectionVerifier(
   introspectionEndpoint: string,
   clientId: string,
   clientSecret: string,
@@ -70,7 +71,9 @@ function buildIntrospectionVerifier(
       });
 
       if (!res.ok) {
-        throw new Error(`Token introspection failed with status ${res.status}`);
+        const msg = `Token introspection failed with status ${res.status}`;
+        console.error(`[oauth] ${msg}`);
+        throw new InvalidTokenError(msg);
       }
 
       const data = (await res.json()) as {
@@ -82,7 +85,7 @@ function buildIntrospectionVerifier(
       };
 
       if (!data.active) {
-        throw new Error('Token is not active');
+        throw new InvalidTokenError('Token is not active');
       }
 
       const audiences: string[] = Array.isArray(data.aud) ? data.aud : data.aud ? [data.aud] : [];
@@ -92,9 +95,7 @@ function buildIntrospectionVerifier(
           checkResourceAllowed({ requestedResource: aud, configuredResource: serverUrl })
         );
         if (!allowed) {
-          throw new Error(
-            `Token audience mismatch. Expected resource matching "${serverUrl}", got: ${audiences.join(', ')}`
-          );
+          throw new InvalidTokenError('Token audience mismatch');
         }
       }
 
@@ -108,7 +109,7 @@ function buildIntrospectionVerifier(
   };
 }
 
-function buildJwksVerifier(
+export function buildJwksVerifier(
   jwksUri: string,
   issuer: string,
   serverUrl: URL,
@@ -118,21 +119,29 @@ function buildJwksVerifier(
 
   return {
     async verifyAccessToken(token: string): Promise<AuthInfo> {
-      // Do not pass `audience` to jwtVerify — Okta (and MCP-compliant clients) set
-      // `aud` to the resource server URL (MCP_SERVER_URL), not the issuer URL.
-      // We validate the audience claim manually below using checkResourceAllowed.
-      const { payload } = await jwtVerify(token, jwks, {
-        issuer,
-        algorithms: ['RS256', 'RS384', 'RS512', 'ES256', 'ES384', 'ES512'],
-      });
+      let payload: Awaited<ReturnType<typeof jwtVerify>>['payload'];
+      try {
+        // Do not pass `audience` to jwtVerify — Okta (and MCP-compliant clients) set
+        // `aud` to the resource server URL (MCP_SERVER_URL), not the issuer URL.
+        // We validate the audience claim manually below using checkResourceAllowed.
+        ({ payload } = await jwtVerify(token, jwks, {
+          issuer,
+          algorithms: ['RS256', 'RS384', 'RS512', 'ES256', 'ES384', 'ES512'],
+        }));
+      } catch (err) {
+        if (err instanceof InvalidTokenError) throw err;
+        // Convert jose errors (JWTExpired, JWSSignatureVerificationFailed, etc.) to
+        // InvalidTokenError so the bearer-auth middleware returns 401, not 500.
+        const message = err instanceof Error ? err.message : 'Token verification failed';
+        console.error(`[oauth] JWT verification failed: ${message}`);
+        throw new InvalidTokenError(message);
+      }
 
       const rawAud = payload.aud;
       const audiences: string[] = Array.isArray(rawAud) ? rawAud : rawAud ? [rawAud] : [];
 
-      console.error(`[oauth] token claims: iss=${payload.iss} aud=${JSON.stringify(rawAud)} scope=${payload.scope}`);
-
       if (audiences.length === 0) {
-        throw new Error('Token is missing the "aud" claim');
+        throw new InvalidTokenError('Token is missing the "aud" claim');
       }
 
       const configuredAudience = explicitAudience ?? serverUrl.href;
@@ -144,7 +153,7 @@ function buildJwksVerifier(
         }
       });
       if (!allowed) {
-        throw new Error(`Token audience mismatch. Expected "${configuredAudience}", got: ${audiences.join(', ')}`);
+        throw new InvalidTokenError('Token audience mismatch');
       }
 
       // `scope` (space-separated string) is standard; `scp` (string array) is Okta-specific.
