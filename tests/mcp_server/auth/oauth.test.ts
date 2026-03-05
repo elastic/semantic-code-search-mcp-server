@@ -1,6 +1,11 @@
-import { buildIntrospectionVerifier, buildJwksVerifier } from '../../../src/mcp_server/auth/oauth';
+import {
+  buildIntrospectionVerifier,
+  buildJwksVerifier,
+  discoverOidcEndpoints,
+} from '../../../src/mcp_server/auth/oauth';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { checkResourceAllowed } from '@modelcontextprotocol/sdk/shared/auth-utils.js';
+import { InvalidTokenError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
 jest.mock('jose', () => ({
   createRemoteJWKSet: jest.fn().mockReturnValue('mock-jwks'),
@@ -249,9 +254,104 @@ describe('buildJwksVerifier', () => {
     expect(result.expiresAt).toBe(12345);
   });
 
-  it('passes the token and JWKS set to jwtVerify', async () => {
-    mockJwt({});
+  it('passes the token and JWKS set to jwtVerify', () => {
+    // createRemoteJWKSet is called at construction time, not per-request — no jwt mock needed
     buildJwksVerifier(JWKS_URI, ISSUER, SERVER_URL);
     expect(createRemoteJWKSet).toHaveBeenCalledWith(new URL(JWKS_URI));
+  });
+
+  it('wraps jose errors (e.g. JWTExpired) as InvalidTokenError so middleware returns 401 not 500', async () => {
+    // Simulate jose throwing a JWTExpired-like error (not an InvalidTokenError)
+    const joseError = new Error('JWT is expired');
+    joseError.name = 'JWTExpired';
+    (jwtVerify as jest.Mock).mockRejectedValueOnce(joseError);
+
+    const verifier = buildJwksVerifier(JWKS_URI, ISSUER, SERVER_URL);
+    const err = await verifier.verifyAccessToken('expired-token').catch((e: unknown) => e);
+
+    // Must be InvalidTokenError, not the raw jose error, so requireBearerAuth returns 401
+    expect(err).toBeInstanceOf(InvalidTokenError);
+    expect((err as Error).message).toBe('JWT is expired');
+  });
+
+  it('re-throws InvalidTokenError without wrapping', async () => {
+    const original = new InvalidTokenError('already correct type');
+    (jwtVerify as jest.Mock).mockRejectedValueOnce(original);
+
+    const verifier = buildJwksVerifier(JWKS_URI, ISSUER, SERVER_URL);
+    const err = await verifier.verifyAccessToken('tok').catch((e: unknown) => e);
+
+    expect(err).toBe(original);
+  });
+});
+
+describe('discoverOidcEndpoints', () => {
+  let fetchSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    fetchSpy = jest.spyOn(global, 'fetch');
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const validDoc = {
+    issuer: ISSUER,
+    authorization_endpoint: `${ISSUER}/oauth2/v1/authorize`,
+    token_endpoint: `${ISSUER}/oauth2/v1/token`,
+    jwks_uri: JWKS_URI,
+    response_types_supported: ['code'],
+  };
+
+  it('returns discovery doc from /.well-known/openid-configuration', async () => {
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      json: async () => validDoc,
+    } as Response);
+
+    const result = await discoverOidcEndpoints(ISSUER);
+    expect(result).toEqual(validDoc);
+    expect(fetchSpy).toHaveBeenCalledWith(`${ISSUER}/.well-known/openid-configuration`);
+  });
+
+  it('falls back to /.well-known/oauth-authorization-server when openid-configuration returns non-ok', async () => {
+    fetchSpy
+      .mockResolvedValueOnce({ ok: false, status: 404 } as Response)
+      .mockResolvedValueOnce({ ok: true, json: async () => validDoc } as Response);
+
+    const result = await discoverOidcEndpoints(ISSUER);
+    expect(result).toEqual(validDoc);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy.mock.calls[1][0]).toBe(`${ISSUER}/.well-known/oauth-authorization-server`);
+  });
+
+  it('falls back when first URL returns a document missing required fields', async () => {
+    const incompleteDoc = { issuer: ISSUER }; // missing authorization_endpoint, token_endpoint, jwks_uri
+    fetchSpy
+      .mockResolvedValueOnce({ ok: true, json: async () => incompleteDoc } as Response)
+      .mockResolvedValueOnce({ ok: true, json: async () => validDoc } as Response);
+
+    const result = await discoverOidcEndpoints(ISSUER);
+    expect(result).toEqual(validDoc);
+  });
+
+  it('throws when both discovery URLs fail', async () => {
+    fetchSpy.mockResolvedValue({ ok: false, status: 404 } as Response);
+
+    await expect(discoverOidcEndpoints(ISSUER)).rejects.toThrow('OAuth discovery failed');
+  });
+
+  it('throws when both discovery URLs throw network errors', async () => {
+    fetchSpy.mockRejectedValue(new Error('ECONNREFUSED'));
+
+    await expect(discoverOidcEndpoints(ISSUER)).rejects.toThrow('OAuth discovery failed');
+  });
+
+  it('strips trailing slash from issuer before constructing URLs', async () => {
+    fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => validDoc } as Response);
+
+    await discoverOidcEndpoints(`${ISSUER}/`);
+    expect(fetchSpy.mock.calls[0][0]).toBe(`${ISSUER}/.well-known/openid-configuration`);
   });
 });

@@ -24,7 +24,7 @@ interface OidcDiscovery {
   [key: string]: unknown;
 }
 
-async function discoverOidcEndpoints(issuer: string): Promise<OidcDiscovery> {
+export async function discoverOidcEndpoints(issuer: string): Promise<OidcDiscovery> {
   const issuerUrl = issuer.replace(/\/$/, '');
   const candidates = [
     `${issuerUrl}/.well-known/openid-configuration`,
