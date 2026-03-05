@@ -55,7 +55,8 @@ export function buildIntrospectionVerifier(
   introspectionEndpoint: string,
   clientId: string,
   clientSecret: string,
-  serverUrl: URL
+  serverUrl: URL,
+  allowedClientIds: string[] = []
 ): OAuthTokenVerifier {
   return {
     async verifyAccessToken(token: string): Promise<AuthInfo> {
@@ -88,6 +89,12 @@ export function buildIntrospectionVerifier(
         throw new InvalidTokenError('Token is not active');
       }
 
+      const tokenClientId = data.client_id ?? clientId;
+      if (allowedClientIds.length > 0 && !allowedClientIds.includes(tokenClientId)) {
+        console.error(`[oauth] Rejected token: client_id "${tokenClientId}" is not in the allowlist`);
+        throw new InvalidTokenError('Token client not authorized');
+      }
+
       const audiences: string[] = Array.isArray(data.aud) ? data.aud : data.aud ? [data.aud] : [];
 
       if (audiences.length > 0) {
@@ -101,7 +108,7 @@ export function buildIntrospectionVerifier(
 
       return {
         token,
-        clientId: data.client_id ?? clientId,
+        clientId: tokenClientId,
         scopes: data.scope ? data.scope.split(' ').filter(Boolean) : [],
         expiresAt: data.exp,
       };
@@ -113,7 +120,8 @@ export function buildJwksVerifier(
   jwksUri: string,
   issuer: string,
   serverUrl: URL,
-  explicitAudience?: string
+  explicitAudience?: string,
+  allowedClientIds: string[] = []
 ): OAuthTokenVerifier {
   const jwks = createRemoteJWKSet(new URL(jwksUri));
 
@@ -164,6 +172,11 @@ export function buildJwksVerifier(
           : [];
       const clientId = typeof payload.client_id === 'string' ? payload.client_id : ((payload.azp as string) ?? '');
 
+      if (allowedClientIds.length > 0 && !allowedClientIds.includes(clientId)) {
+        console.error(`[oauth] Rejected token: client_id "${clientId}" is not in the allowlist`);
+        throw new InvalidTokenError('Token client not authorized');
+      }
+
       return {
         token,
         clientId,
@@ -196,11 +209,18 @@ export async function setupOAuth(app: express.Application, config: OAuthConfig, 
       discovery.introspection_endpoint,
       config.clientId!,
       config.clientSecret!,
-      serverUrlObj
+      serverUrlObj,
+      config.allowedClientIds
     );
   } else {
     console.error(`[oauth] Using JWKS validation. JWKS URI: ${discovery.jwks_uri}`);
-    verifier = buildJwksVerifier(discovery.jwks_uri, discovery.issuer, serverUrlObj, config.audience);
+    verifier = buildJwksVerifier(
+      discovery.jwks_uri,
+      discovery.issuer,
+      serverUrlObj,
+      config.audience,
+      config.allowedClientIds
+    );
   }
 
   const oauthMetadata: OAuthMetadata = {
