@@ -9,6 +9,7 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { oauthConfig } from '../config';
 import { setupOAuth } from './auth/oauth';
 
+import { createAuthStatusHandler, authStatusSchema } from './tools/auth_status';
 import { semanticCodeSearch, semanticCodeSearchSchema } from './tools/semantic_code_search';
 import { mapSymbolsByQuery, mapSymbolsByQuerySchema } from './tools/map_symbols_by_query';
 import { symbolAnalysis, symbolAnalysisSchema } from './tools/symbol_analysis';
@@ -112,6 +113,18 @@ export class McpServer {
       { description: this.descriptions.discover_directories, inputSchema: discoverDirectoriesSchema.shape },
       this.withLogging('discover_directories', discoverDirectories)
     );
+    if (oauthConfig.enabled) {
+      server.registerTool(
+        'auth_status',
+        {
+          description:
+            'Returns your current OAuth authentication status: which client app you authenticated with, what scopes your token has, and when it expires. Only available when OAuth is enabled.',
+          inputSchema: authStatusSchema.shape,
+        },
+        createAuthStatusHandler(oauthConfig.issuer)
+      );
+    }
+
     server.registerPrompt(
       'StartInvestigation',
       {

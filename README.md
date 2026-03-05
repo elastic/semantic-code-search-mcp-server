@@ -253,7 +253,7 @@ Note: scopes like `offline_access` and `email` work with Okta and the major IDEs
 
 When `MCP_SERVER_URL` is not set (or points to localhost), the server binds to `127.0.0.1` only. Set `MCP_SERVER_URL` to a non-localhost URL to bind to all interfaces (required for Docker containers and reverse proxy deployments).
 
-### Token lifetime
+### Checking your auth status\n\nWhen OAuth is enabled, an `auth_status` tool is available in all MCP clients. Ask the AI assistant to call it:\n\n> "Call the auth_status tool"\n\nIt returns your client ID, granted scopes, and token expiry — nothing sensitive (the token itself is never included).\n\n### Token lifetime
 
 Clients re-authenticate when their access token expires. To reduce auth prompts, increase the access token lifetime in your authorization server. For Okta: Admin → Security → API → Authorization Servers → default → Access Policies.
 
