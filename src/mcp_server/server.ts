@@ -155,6 +155,7 @@ export class McpServer {
     // server root. We always derive the MCP resource URL from the base URL.
     const baseUrl = (serverUrl ?? `http://localhost:${port}`).replace(/\/$/, '');
     const mcpUrl = `${baseUrl}/mcp`;
+    const expectedOrigin = new URL(mcpUrl).origin;
     const app = express();
     app.use(express.json());
 
@@ -167,6 +168,25 @@ export class McpServer {
       res.on('finish', () => {
         console.error(`[http] ← ${req.method} ${req.path} ${res.statusCode} (${Date.now() - start}ms) ua=${ua}`);
       });
+      next();
+    });
+
+    // Origin validation — MCP spec (2025-03-26) §Transports Security Warning:
+    // Servers MUST validate the Origin header to prevent DNS rebinding attacks.
+    // MCP clients (Claude Code, VS Code, Cursor) are not browsers and do not send Origin.
+    // When a browser-originated request includes Origin, we reject it unless it matches
+    // the server's own origin, blocking DNS rebinding while not affecting MCP clients.
+    app.use('/mcp', (req, res, next) => {
+      const origin = req.headers.origin;
+      if (origin && origin !== expectedOrigin) {
+        console.error(`[security] Rejected request: Origin "${origin}" != expected "${expectedOrigin}"`);
+        res.status(403).json({
+          jsonrpc: '2.0',
+          error: { code: -32000, message: 'Forbidden' },
+          id: null,
+        });
+        return;
+      }
       next();
     });
 
@@ -228,8 +248,16 @@ export class McpServer {
     app.get('/mcp', methodNotAllowed);
     app.delete('/mcp', methodNotAllowed);
 
-    const httpServer = app.listen(port, () => {
-      console.log(`MCP HTTP server listening on port ${port}`);
+    // MCP spec (2025-03-26) §Transports Security Warning: when running locally,
+    // servers SHOULD bind only to 127.0.0.1, not 0.0.0.0, to reduce the attack
+    // surface. When MCP_SERVER_URL is set to a non-localhost URL (i.e. deployed
+    // in a container or behind a reverse proxy) we bind to all interfaces so the
+    // container's network stack can reach us.
+    const isLocal =
+      !serverUrl || new URL(baseUrl).hostname === 'localhost' || new URL(baseUrl).hostname === '127.0.0.1';
+    const bindHost = isLocal ? '127.0.0.1' : '0.0.0.0';
+    const httpServer = app.listen(port, bindHost, () => {
+      console.log(`MCP HTTP server listening on ${bindHost}:${port}`);
     });
 
     // Node's default keepAliveTimeout is 5 s. If a client reuses a keep-alive

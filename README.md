@@ -196,6 +196,69 @@ The MCP server provides the following tools:
 
 ---
 
+## OAuth 2.0 Authentication (HTTP mode)
+
+The HTTP server supports OAuth 2.0 bearer token authentication. When enabled, MCP clients (Claude Code, VS Code, Cursor) automatically discover the authorization server, obtain a token, and present it on every request. The server only validates tokens — it never issues them.
+
+### Prerequisites
+
+- An OIDC-compliant authorization server (Okta, Auth0, Keycloak, etc.)
+- **The server must be reachable at its own dedicated (sub)domain.** MCP clients fetch `/.well-known/oauth-protected-resource` from the root of the server's domain to discover the authorization server. This well-known URI must resolve at the domain root per [RFC 8615](https://www.rfc-editor.org/rfc/rfc8615) §3 and [RFC 9728](https://www.rfc-editor.org/rfc/rfc9728) §3. A subpath deployment (e.g. `https://shared.example.com/my-mcp`) will not work.
+- **Okta app type must be SPA (not Web).** MCP clients use the Authorization Code + PKCE flow ([RFC 7636](https://www.rfc-editor.org/rfc/rfc7636)) without a client secret. Web app type requires a client secret for code exchange and will fail.
+
+### JWKS validation (default — no secrets required)
+
+The server validates JWTs locally using the provider's public JWKS endpoint discovered from the issuer's OIDC configuration.
+
+```bash
+MCP_OAUTH_ENABLED=true
+MCP_OAUTH_ISSUER=https://your-okta.okta.com/oauth2/default
+MCP_SERVER_URL=https://your-server.example.com     # must be the server's public URL
+# Optional:
+MCP_OAUTH_AUDIENCE=api://default                   # for Okta non-URL audience strings
+MCP_OAUTH_REQUIRED_SCOPES=openid                   # space-separated; minimum "openid" for Okta
+```
+
+### Token introspection (opt-in — requires client credentials)
+
+Activated when both `MCP_OAUTH_CLIENT_ID` and `MCP_OAUTH_CLIENT_SECRET` are set. The server calls the provider's [RFC 7662](https://www.rfc-editor.org/rfc/rfc7662) introspection endpoint on every request. Use this when the provider issues opaque (non-JWT) tokens, or when real-time revocation checking is required.
+
+```bash
+MCP_OAUTH_ENABLED=true
+MCP_OAUTH_ISSUER=https://your-keycloak.com/realms/myrealm
+MCP_OAUTH_CLIENT_ID=my-resource-server
+MCP_OAUTH_CLIENT_SECRET=super-secret
+MCP_SERVER_URL=https://your-server.example.com
+```
+
+### Docker (HTTP mode with OAuth)
+
+```bash
+docker run --rm -p 3000:3000 \
+  -e ELASTICSEARCH_ENDPOINT=https://... \
+  -e MCP_OAUTH_ENABLED=true \
+  -e MCP_OAUTH_ISSUER=https://your-okta.okta.com/oauth2/default \
+  -e MCP_SERVER_URL=https://your-server.example.com \
+  -e MCP_OAUTH_REQUIRED_SCOPES=openid \
+  simianhacker/semantic-code-search-mcp-server
+```
+
+### Required scopes
+
+`MCP_OAUTH_REQUIRED_SCOPES` controls which scopes the server advertises and requires on every token. The minimum recommended value for Okta is `openid`. Setting it to an empty string causes Okta to reject the authorization request with a "no scopes configured" error.
+
+Note: scopes like `offline_access` and `email` work with Okta and the major IDEs but are not guaranteed by any standard. Avoid them if you need M2M (client credentials) access.
+
+### Local development without OAuth
+
+When `MCP_SERVER_URL` is not set (or points to localhost), the server binds to `127.0.0.1` only. Set `MCP_SERVER_URL` to a non-localhost URL to bind to all interfaces (required for Docker containers and reverse proxy deployments).
+
+### Token lifetime
+
+Clients re-authenticate when their access token expires. To reduce auth prompts, increase the access token lifetime in your authorization server. For Okta: Admin → Security → API → Authorization Servers → default → Access Policies.
+
+---
+
 ## Configuration
 
 Configuration is managed via environment variables in a `.env` file.
