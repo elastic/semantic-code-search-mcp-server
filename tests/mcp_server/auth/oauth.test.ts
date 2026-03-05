@@ -116,6 +116,38 @@ describe('buildIntrospectionVerifier', () => {
     expect(checkResourceAllowed).not.toHaveBeenCalled();
   });
 
+  it('rejects token when client_id is not in allowedClientIds', async () => {
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ active: true, client_id: 'evil-client' }),
+    } as Response);
+
+    const verifier = buildIntrospectionVerifier(INTROSPECTION_ENDPOINT, 'c', 's', SERVER_URL, ['allowed-client']);
+    await expect(verifier.verifyAccessToken('tok')).rejects.toThrow('Token client not authorized');
+  });
+
+  it('accepts token when client_id is in allowedClientIds', async () => {
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ active: true, client_id: 'allowed-client', scope: 'read' }),
+    } as Response);
+
+    const verifier = buildIntrospectionVerifier(INTROSPECTION_ENDPOINT, 'c', 's', SERVER_URL, ['allowed-client']);
+    const result = await verifier.verifyAccessToken('tok');
+    expect(result.clientId).toBe('allowed-client');
+  });
+
+  it('accepts token when allowedClientIds is empty (no restriction)', async () => {
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ active: true, client_id: 'any-client' }),
+    } as Response);
+
+    const verifier = buildIntrospectionVerifier(INTROSPECTION_ENDPOINT, 'c', 's', SERVER_URL, []);
+    const result = await verifier.verifyAccessToken('tok');
+    expect(result.clientId).toBe('any-client');
+  });
+
   it('sends client_id and client_secret in the request body', async () => {
     fetchSpy.mockResolvedValueOnce({
       ok: true,
@@ -272,6 +304,42 @@ describe('buildJwksVerifier', () => {
     // Must be InvalidTokenError, not the raw jose error, so requireBearerAuth returns 401
     expect(err).toBeInstanceOf(InvalidTokenError);
     expect((err as Error).message).toBe('JWT is expired');
+  });
+
+  it('rejects token when client_id is not in allowedClientIds', async () => {
+    mockJwt({ client_id: 'evil-client' });
+    const verifier = buildJwksVerifier(JWKS_URI, ISSUER, SERVER_URL, undefined, ['allowed-client']);
+    await expect(verifier.verifyAccessToken('tok')).rejects.toThrow('Token client not authorized');
+  });
+
+  it('accepts token when client_id is in allowedClientIds', async () => {
+    mockJwt({ client_id: 'allowed-client' });
+    const verifier = buildJwksVerifier(JWKS_URI, ISSUER, SERVER_URL, undefined, ['allowed-client']);
+    const result = await verifier.verifyAccessToken('tok');
+    expect(result.clientId).toBe('allowed-client');
+  });
+
+  it('accepts token when allowedClientIds is empty (no restriction)', async () => {
+    mockJwt({ client_id: 'any-client' });
+    const verifier = buildJwksVerifier(JWKS_URI, ISSUER, SERVER_URL, undefined, []);
+    const result = await verifier.verifyAccessToken('tok');
+    expect(result.clientId).toBe('any-client');
+  });
+
+  it('checks azp when client_id is absent against allowedClientIds', async () => {
+    mockJwt({ client_id: undefined, azp: 'allowed-via-azp' });
+    const verifier = buildJwksVerifier(JWKS_URI, ISSUER, SERVER_URL, undefined, ['allowed-via-azp']);
+    const result = await verifier.verifyAccessToken('tok');
+    expect(result.clientId).toBe('allowed-via-azp');
+  });
+
+  it('does not leak client_id in allowlist rejection error', async () => {
+    mockJwt({ client_id: 'evil-client' });
+    const verifier = buildJwksVerifier(JWKS_URI, ISSUER, SERVER_URL, undefined, ['allowed-client']);
+    const err = await verifier.verifyAccessToken('tok').catch((e: unknown) => e);
+    expect((err as Error).message).toBe('Token client not authorized');
+    expect((err as Error).message).not.toContain('evil-client');
+    expect((err as Error).message).not.toContain('allowed-client');
   });
 
   it('re-throws InvalidTokenError without wrapping', async () => {
