@@ -171,7 +171,7 @@ export class McpServer {
       next();
     });
 
-    // Origin validation — MCP spec (2025-03-26) §Transports Security Warning:
+    // Origin validation — MCP spec (2025-03-26), Transports Security Warning:
     // Servers MUST validate the Origin header to prevent DNS rebinding attacks.
     // MCP clients (Claude Code, VS Code, Cursor) are not browsers and do not send Origin.
     // When a browser-originated request includes Origin, we reject it unless it matches
@@ -248,7 +248,7 @@ export class McpServer {
     app.get('/mcp', methodNotAllowed);
     app.delete('/mcp', methodNotAllowed);
 
-    // MCP spec (2025-03-26) §Transports Security Warning: when running locally,
+    // MCP spec (2025-03-26), Transports Security Warning: when running locally,
     // servers SHOULD bind only to 127.0.0.1, not 0.0.0.0, to reduce the attack
     // surface. When MCP_SERVER_URL is set to a non-localhost URL (i.e. deployed
     // in a container or behind a reverse proxy) we bind to all interfaces so the

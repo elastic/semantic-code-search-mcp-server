@@ -203,7 +203,7 @@ The HTTP server supports OAuth 2.0 bearer token authentication. When enabled, MC
 ### Prerequisites
 
 - An OIDC-compliant authorization server (Okta, Auth0, Keycloak, etc.)
-- **The server must be reachable at its own dedicated (sub)domain.** MCP clients fetch `/.well-known/oauth-protected-resource` from the root of the server's domain to discover the authorization server. This well-known URI must resolve at the domain root per [RFC 8615](https://www.rfc-editor.org/rfc/rfc8615) §3 and [RFC 9728](https://www.rfc-editor.org/rfc/rfc9728) §3. A subpath deployment (e.g. `https://shared.example.com/my-mcp`) will not work.
+- **The server must be reachable at its own dedicated (sub)domain.** MCP clients fetch `/.well-known/oauth-protected-resource` from the root of the server's domain to discover the authorization server. This well-known URI must resolve at the domain root per [RFC 8615](https://www.rfc-editor.org/rfc/rfc8615) section 3 and [RFC 9728](https://www.rfc-editor.org/rfc/rfc9728) section 3. A subpath deployment (e.g. `https://shared.example.com/my-mcp`) will not work.
 - **Okta app type must be SPA (not Web).** MCP clients use the Authorization Code + PKCE flow ([RFC 7636](https://www.rfc-editor.org/rfc/rfc7636)) without a client secret. Web app type requires a client secret for code exchange and will fail.
 
 ### JWKS validation (default — no secrets required)
