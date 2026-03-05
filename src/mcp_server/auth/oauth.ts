@@ -170,7 +170,10 @@ export function buildJwksVerifier(
         : typeof payload.scope === 'string'
           ? payload.scope.split(' ').filter(Boolean)
           : [];
-      const clientId = typeof payload.client_id === 'string' ? payload.client_id : ((payload.azp as string) ?? '');
+
+      // Priority: client_id (standard) → azp (standard authorized-party) → cid (Okta-specific)
+      const clientId =
+        [payload.client_id, payload.azp, payload.cid].find((v): v is string => typeof v === 'string') ?? '';
 
       if (allowedClientIds.length > 0 && !allowedClientIds.includes(clientId)) {
         console.error(`[oauth] Rejected token: client_id "${clientId}" is not in the allowlist`);
