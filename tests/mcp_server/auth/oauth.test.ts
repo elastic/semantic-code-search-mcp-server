@@ -231,6 +231,20 @@ describe('buildJwksVerifier', () => {
     expect(result.clientId).toBe('azp-client');
   });
 
+  it('falls back to cid (Okta-specific) when client_id and azp are absent', async () => {
+    mockJwt({ client_id: undefined, azp: undefined, cid: 'okta-cid' });
+    const verifier = buildJwksVerifier(JWKS_URI, ISSUER, SERVER_URL);
+    const result = await verifier.verifyAccessToken('tok');
+    expect(result.clientId).toBe('okta-cid');
+  });
+
+  it('checks cid against allowedClientIds when client_id and azp are absent', async () => {
+    mockJwt({ client_id: undefined, azp: undefined, cid: 'okta-cid' });
+    const verifier = buildJwksVerifier(JWKS_URI, ISSUER, SERVER_URL, undefined, ['okta-cid']);
+    const result = await verifier.verifyAccessToken('tok');
+    expect(result.clientId).toBe('okta-cid');
+  });
+
   it('throws when aud claim is missing', async () => {
     (jwtVerify as jest.Mock).mockResolvedValueOnce({
       payload: { iss: ISSUER, exp: 9999 },
