@@ -55,14 +55,10 @@ export class McpServer {
     fn: (args: TArgs, extra: TExtra) => Promise<CallToolResult>
   ): (args: TArgs, extra: TExtra) => Promise<CallToolResult> {
     return async (args: TArgs, extra: TExtra) => {
-      const start = Date.now();
-      console.error(`[tool] ${name} start`);
       try {
-        const result = await fn(args, extra);
-        console.error(`[tool] ${name} ok (${Date.now() - start}ms)`);
-        return result;
+        return await fn(args, extra);
       } catch (err) {
-        console.error(`[tool] ${name} error (${Date.now() - start}ms): ${err}`);
+        console.error(`[tool] ${name} error: ${err}`);
         throw err;
       }
     };
@@ -172,18 +168,6 @@ export class McpServer {
     const app = express();
     app.use(express.json());
 
-    app.use((req, res, next) => {
-      const start = Date.now();
-      const ua = (req.headers['user-agent'] ?? 'unknown').slice(0, 40);
-      console.error(
-        `[http] → ${req.method} ${req.path} auth=${req.headers.authorization ? 'present' : 'none'} ua=${ua}`
-      );
-      res.on('finish', () => {
-        console.error(`[http] ← ${req.method} ${req.path} ${res.statusCode} (${Date.now() - start}ms) ua=${ua}`);
-      });
-      next();
-    });
-
     // Origin validation — MCP spec (2025-03-26), Transports Security Warning:
     // Servers MUST validate the Origin header to prevent DNS rebinding attacks.
     // MCP clients (Claude Code, VS Code, Cursor) are not browsers and do not send Origin.
@@ -219,13 +203,6 @@ export class McpServer {
 
     app.post('/mcp', async (req, res) => {
       req.socket?.setNoDelay(true);
-      const rpcMethod = Array.isArray(req.body)
-        ? req.body.map((m: { method?: string }) => m.method).join(',')
-        : req.body?.method;
-      if (rpcMethod) {
-        console.error(`[rpc] method=${rpcMethod}`);
-      }
-
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // stateless: no session IDs
       });
@@ -277,6 +254,8 @@ export class McpServer {
     // connection after 5 s of inactivity the server has already closed it,
     // causing an ECONNRESET. Set to 65 s (> most reverse-proxy defaults).
     httpServer.keepAliveTimeout = 65_000;
+    // headersTimeout must exceed keepAliveTimeout to avoid a race where Node
+    // closes the connection before the client finishes sending headers on reuse.
     httpServer.headersTimeout = 66_000;
   }
 }
