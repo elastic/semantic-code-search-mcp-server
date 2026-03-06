@@ -50,15 +50,15 @@ export class McpServer {
     };
   }
 
-  private withLogging<TArgs extends object>(
+  private withLogging<TArgs extends object, TExtra = unknown>(
     name: string,
-    fn: (args: TArgs) => Promise<CallToolResult>
-  ): (args: TArgs) => Promise<CallToolResult> {
-    return async (args: TArgs) => {
+    fn: (args: TArgs, extra: TExtra) => Promise<CallToolResult>
+  ): (args: TArgs, extra: TExtra) => Promise<CallToolResult> {
+    return async (args: TArgs, extra: TExtra) => {
       const start = Date.now();
       console.error(`[tool] ${name} start`);
       try {
-        const result = await fn(args);
+        const result = await fn(args, extra);
         console.error(`[tool] ${name} ok (${Date.now() - start}ms)`);
         return result;
       } catch (err) {
@@ -121,7 +121,7 @@ export class McpServer {
             'Returns your current OAuth authentication status: which client app you authenticated with, what scopes your token has, and when it expires. Only available when OAuth is enabled.',
           inputSchema: authStatusSchema.shape,
         },
-        createAuthStatusHandler(oauthConfig.issuer)
+        this.withLogging('auth_status', createAuthStatusHandler(oauthConfig.issuer))
       );
     }
 

@@ -394,7 +394,10 @@ describe('discoverOidcEndpoints', () => {
 
     const result = await discoverOidcEndpoints(ISSUER);
     expect(result).toEqual(validDoc);
-    expect(fetchSpy).toHaveBeenCalledWith(`${ISSUER}/.well-known/openid-configuration`);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      `${ISSUER}/.well-known/openid-configuration`,
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
   });
 
   it('falls back to /.well-known/oauth-authorization-server when openid-configuration returns non-ok', async () => {
