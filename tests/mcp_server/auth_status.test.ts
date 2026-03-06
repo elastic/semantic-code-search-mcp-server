@@ -57,8 +57,8 @@ describe('createAuthStatusHandler', () => {
     const handler = createAuthStatusHandler(ISSUER);
     const result = await handler({}, makeExtra({ token: 'tok', clientId: 'c', scopes: [], expiresAt }));
     const data = parseResult(result);
-    // Should be "61m Xs"
-    expect((data.expiresIn as string).startsWith('61m')).toBe(true);
+    // Should be "1h 1m Xs"
+    expect((data.expiresIn as string).startsWith('1h 1m')).toBe(true);
   });
 
   it('reports "expired" when expiresAt is in the past', async () => {

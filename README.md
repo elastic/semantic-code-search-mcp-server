@@ -191,6 +191,7 @@ The MCP server provides the following tools:
 | `symbol_analysis` | Analyzes a symbol and returns a report of its definitions, call sites, and references. This is useful for understanding the role of a symbol in the codebase. |
 | `read_file_from_chunks` | Reads the content of a file from the index, providing a reconstructed view based on the most important indexed chunks. |
 | `document_symbols` | Analyzes a file to identify the key symbols that would most benefit from documentation. This is useful for automating the process of improving the semantic quality of a codebase. |
+| `auth_status` | Returns your current OAuth authentication status: client ID, granted scopes, and token expiry. Only available when `MCP_OAUTH_ENABLED=true`. Never includes the token value. |
 
 **Note:** All of the tools accept an optional `index` parameter that allows you to override the `ELASTICSEARCH_INDEX` for a single query.
 
@@ -253,7 +254,25 @@ Note: scopes like `offline_access` and `email` work with Okta and the major IDEs
 
 When `MCP_SERVER_URL` is not set (or points to localhost), the server binds to `127.0.0.1` only. Set `MCP_SERVER_URL` to a non-localhost URL to bind to all interfaces (required for Docker containers and reverse proxy deployments).
 
-### Checking your auth status\n\nWhen OAuth is enabled, an `auth_status` tool is available in all MCP clients. Ask the AI assistant to call it:\n\n> "Call the auth_status tool"\n\nIt returns your client ID, granted scopes, and token expiry — nothing sensitive (the token itself is never included).\n\n### Token lifetime
+### Restricting access to specific OAuth clients
+
+By default, any token issued by the configured authorization server is accepted. To restrict access to a specific app:
+
+```bash
+MCP_OAUTH_ALLOWED_CLIENT_IDS=0oa1abc123def456gh78  # space-separated for multiple IDs
+```
+
+This is recommended when multiple OAuth apps share the same authorization server (common in Okta). Without it, tokens from any app in the tenant that targets the same audience will be accepted. The server checks the `client_id`, `azp`, or `cid` (Okta-specific) claim in the JWT, whichever is present.
+
+### Checking your auth status
+
+When OAuth is enabled, an `auth_status` tool is available in all MCP clients. Ask the AI assistant to call it:
+
+> "Call the auth_status tool"
+
+It returns your client ID, granted scopes, and token expiry — nothing sensitive (the token itself is never included).
+
+### Token lifetime
 
 Clients re-authenticate when their access token expires. To reduce auth prompts, increase the access token lifetime in your authorization server. For Okta: Admin → Security → API → Authorization Servers → default → Access Policies.
 
@@ -268,3 +287,11 @@ Configuration is managed via environment variables in a `.env` file.
 | `ELASTICSEARCH_CLOUD_ID` | The Cloud ID for your Elastic Cloud instance. | |
 | `ELASTICSEARCH_API_KEY` | An API key for Elasticsearch authentication. | |
 | `ELASTICSEARCH_INDEX` | The name of the Elasticsearch index to use. | `semantic-code-search` |
+| `MCP_OAUTH_ENABLED` | Enable OAuth 2.0 bearer token authentication (HTTP mode only). | `false` |
+| `MCP_OAUTH_ISSUER` | OIDC issuer URL. Required when `MCP_OAUTH_ENABLED=true`. | |
+| `MCP_OAUTH_AUDIENCE` | Expected `aud` claim override. Use for Okta non-URL audiences (e.g. `api://default`). | |
+| `MCP_OAUTH_REQUIRED_SCOPES` | Space-separated scopes the server requires on every token. Minimum `openid` for Okta. | |
+| `MCP_OAUTH_ALLOWED_CLIENT_IDS` | Space-separated allowlist of OAuth client IDs. Empty = any client from the issuer. | |
+| `MCP_OAUTH_CLIENT_ID` | Client ID for token introspection (opt-in). Requires `MCP_OAUTH_CLIENT_SECRET`. | |
+| `MCP_OAUTH_CLIENT_SECRET` | Client secret for token introspection (opt-in). | |
+| `MCP_SERVER_URL` | Public URL of the server. Required for OAuth and non-localhost deployments. | |
