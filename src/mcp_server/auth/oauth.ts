@@ -33,7 +33,7 @@ export async function discoverOidcEndpoints(issuer: string): Promise<OidcDiscove
 
   for (const url of candidates) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+      const res = await fetch(url, { signal: AbortSignal.timeout(10_000) }); // 10 s: slow providers still respond within this window
       if (res.ok) {
         const doc = (await res.json()) as OidcDiscovery;
         if (doc.issuer && doc.authorization_endpoint && doc.token_endpoint && doc.jwks_uri) {
