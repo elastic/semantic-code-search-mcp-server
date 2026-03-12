@@ -14,7 +14,7 @@ jest.mock('../../src/utils/elasticsearch', () => ({
 
 jest.mock('../../src/config', () => ({
   elasticsearchConfig: {
-    index: 'kibana-code-search-2.0', // Default index name for tests
+    index: 'kibana', // Default alias name for tests
   },
 }));
 import { elasticsearchConfig } from '../../src/config';
@@ -27,11 +27,21 @@ describe('listIndices', () => {
     (mockClient.search as jest.Mock).mockClear();
   });
 
+  it('should return a helpful message when no location aliases are found', async () => {
+    (mockClient.indices.getAlias as jest.Mock).mockRejectedValue({ meta: { statusCode: 404 } });
+
+    const result = await listIndices();
+    const output = (result.content[0] as TextContent).text;
+
+    expect(output).toContain('No semantic code search indices found.');
+    expect(output).toContain('Expected to find aliases matching "*_locations"');
+  });
+
   it('should mark default when ELASTICSEARCH_INDEX matches the index name', async () => {
-    (elasticsearchConfig as { index: string }).index = 'kibana-code-search-2.0';
+    (elasticsearchConfig as { index: string }).index = 'kibana';
     (mockClient.indices.getAlias as jest.Mock).mockResolvedValue({
-      'kibana-code-search-2.0': { aliases: { 'kibana-repo': {} } },
-      'grafana-code-search': { aliases: { 'grafana-repo': {} } },
+      'kibana-scsi-abc123_locations': { aliases: { kibana_locations: {} } },
+      'grafana-scsi-def456_locations': { aliases: { grafana_locations: {} } },
     });
     (mockClient.search as jest.Mock).mockImplementation(({ index }: { index: string }) => {
       if (index.endsWith('_locations')) {
@@ -49,15 +59,15 @@ describe('listIndices', () => {
     const result = await listIndices();
     const output = (result.content[0] as TextContent).text;
 
-    expect(output).toContain('Index: kibana-repo (Default)');
-    expect(output).not.toContain('Index: grafana-repo (Default)');
+    expect(output).toContain('Index: kibana (Default)');
+    expect(output).not.toContain('Index: grafana (Default)');
   });
 
   it('should mark default when ELASTICSEARCH_INDEX matches the alias name', async () => {
-    (elasticsearchConfig as { index: string }).index = 'grafana-repo';
+    (elasticsearchConfig as { index: string }).index = 'grafana';
     (mockClient.indices.getAlias as jest.Mock).mockResolvedValue({
-      'kibana-code-search-2.0': { aliases: { 'kibana-repo': {} } },
-      'grafana-code-search': { aliases: { 'grafana-repo': {} } },
+      'kibana-scsi-abc123_locations': { aliases: { kibana_locations: {} } },
+      'grafana-scsi-def456_locations': { aliases: { grafana_locations: {} } },
     });
     (mockClient.search as jest.Mock).mockImplementation(({ index }: { index: string }) => {
       if (index.endsWith('_locations')) {
@@ -75,7 +85,7 @@ describe('listIndices', () => {
     const result = await listIndices();
     const output = (result.content[0] as TextContent).text;
 
-    expect(output).not.toContain('Index: kibana-repo (Default)');
-    expect(output).toContain('Index: grafana-repo (Default)');
+    expect(output).not.toContain('Index: kibana (Default)');
+    expect(output).toContain('Index: grafana (Default)');
   });
 });

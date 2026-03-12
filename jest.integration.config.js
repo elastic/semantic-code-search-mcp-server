@@ -3,7 +3,7 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   watchman: false,
-  testMatch: ['**/tests/**/*.test.ts'],
-  testPathIgnorePatterns: ['<rootDir>/tests/integration/'],
+  testMatch: ['**/tests/integration/**/*.test.ts'],
   modulePathIgnorePatterns: ['<rootDir>/.repos/'],
+  testTimeout: 180000,
 };

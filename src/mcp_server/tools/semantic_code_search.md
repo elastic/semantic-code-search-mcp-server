@@ -176,10 +176,10 @@ semantic_code_search (entry point) → symbol_analysis (chain) → read_file_fro
 
 **Note**: Step 3 uses actual symbol names discovered in steps 1-2, NOT generic terms like "lens" or "embeddable".
 
-**Note (locations-first indices):** Chunk documents are content-deduplicated and do **not** store per-file metadata. File paths and line ranges are stored in the accompanying `<index>_locations` index and are joined by `chunk_id`.
+**Note (locations-first indices):** Chunk documents are content-deduplicated and do **not** store per-file metadata. File paths and line ranges are stored in the accompanying `<alias>_locations` index and are joined by `chunk_id`.
 
 **Note (KQL across split storage):**
-- Chunk-level fields (e.g. `language`, `kind`, `content`) live in `<index>`.
-- File-level fields (e.g. `filePath`, `directoryPath`, `startLine`, `endLine`, `git_branch`) live in `<index>_locations`.
+- Chunk-level fields (e.g. `language`, `kind`, `content`) live in `<alias>`.
+- File-level fields (e.g. `filePath`, `directoryPath`, `startLine`, `endLine`, `git_branch`) live in `<alias>_locations`.
 - When you provide both `query` and `kql`, the tool evaluates `kql` across both stores (including `and/or/not`) against a bounded candidate set from the semantic query.
 - If you provide **only** `kql` and it references file-level fields, the tool will require adding a semantic `query` (to keep evaluation bounded).

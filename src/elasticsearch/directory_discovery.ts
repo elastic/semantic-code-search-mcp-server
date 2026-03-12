@@ -26,7 +26,7 @@ interface DirectoryAggregationResponse {
 }
 
 /**
- * Discovers significant directories via `<index>_locations` (one document per chunk occurrence).
+ * Discovers significant directories via `<alias>_locations` (one document per chunk occurrence).
  */
 export async function discoverSignificantDirectories(
   client: Client,

@@ -14,6 +14,10 @@
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
     "test": "jest",
+    "test:integration": "npm run test:integration:setup && npm run test:integration:run; TEST_EXIT_CODE=$?; npm run test:integration:teardown; exit $TEST_EXIT_CODE",
+    "test:integration:run": "jest --config jest.integration.config.js --runInBand",
+    "test:integration:setup": "bash scripts/setup-integration-tests.sh",
+    "test:integration:teardown": "bash scripts/teardown-integration-tests.sh",
     "prepare": "npm run build",
     "mcp-server": "ts-node src/mcp_server/bin.ts",
     "mcp-server:http": "ts-node src/mcp_server/bin.ts http"

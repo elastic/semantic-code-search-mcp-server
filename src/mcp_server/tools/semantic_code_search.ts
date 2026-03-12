@@ -47,7 +47,7 @@ export async function semanticCodeSearch(params: SemanticCodeSearchParams): Prom
 
   const baseIndex = index || elasticsearchConfig.index;
 
-  // Fast-path: KQL-only searches that reference only chunk fields can run directly on <index>.
+  // Fast-path: KQL-only searches that reference only chunk fields can run directly on <alias>.
   if (!query && kql) {
     // If KQL includes location fields and there's no semantic query to establish a bounded universe,
     // the split-index evaluation can become unbounded (especially with NOT). Require `query`.
@@ -57,7 +57,7 @@ export async function semanticCodeSearch(params: SemanticCodeSearchParams): Prom
     if (hasLocationField) {
       throw new Error(
         'KQL-only searches that reference file-level fields (e.g. filePath/directoryPath/startLine) require a semantic `query`.\n' +
-          'This MCP uses a split index model (<index> + <index>_locations) and needs a bounded candidate set to evaluate such filters safely.'
+          'This MCP uses a split index model (<alias> + <alias>_locations) and needs a bounded candidate set to evaluate such filters safely.'
       );
     }
   }
@@ -113,7 +113,7 @@ export async function semanticCodeSearch(params: SemanticCodeSearchParams): Prom
     const collected: Array<{ id: string; score: number; source: unknown }> = [];
 
     // Fetch semantic candidates in increasing batches until we can satisfy the requested page
-    // after applying KQL (which may require evaluating against <index>_locations).
+    // after applying KQL (which may require evaluating against <alias>_locations).
     const batchSize = Math.max(50, Math.min(500, size * 4));
     let from = 0;
 

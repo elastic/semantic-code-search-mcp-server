@@ -53,7 +53,7 @@ Returns a ranked list of directories with:
 - **Languages**: Programming languages used
 - **Score**: Average score of matches
 
-**Note (locations-first indices):** Directory and file-level information is derived from `<index>_locations` (one document per chunk occurrence). The tool may join to `<index>` via `chunk_id` to enrich results (e.g. languages / symbol counts).
+**Note (locations-first indices):** Directory and file-level information is derived from `<alias>_locations` (one document per chunk occurrence). The tool may join to `<alias>` via `chunk_id` to enrich results (e.g. languages / symbol counts).
 
 ## Example Output
 ```
