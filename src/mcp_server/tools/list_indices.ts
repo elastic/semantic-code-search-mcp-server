@@ -53,12 +53,9 @@ function formatNumber(num: number): string {
 }
 
 export async function listIndices(): Promise<CallToolResult> {
-  const t0 = Date.now();
-  console.error('[es] list_indices getAlias start');
   const aliasesResponse = await client.indices.getAlias({
     name: '*-repo',
   });
-  console.error(`[es] list_indices getAlias ok (${Date.now() - t0}ms)`);
 
   if (!aliasesResponse || Object.keys(aliasesResponse).length === 0) {
     return {
@@ -77,8 +74,6 @@ export async function listIndices(): Promise<CallToolResult> {
 
     for (const alias of repoAliases) {
       const locationsIndex = getLocationsIndexName(alias);
-      const t1 = Date.now();
-      console.error(`[es] list_indices locations search start index=${locationsIndex}`);
       const fileCountResponse = await client.search({
         index: locationsIndex,
         size: 0,
@@ -86,17 +81,13 @@ export async function listIndices(): Promise<CallToolResult> {
           filesIndexed: { cardinality: { field: 'filePath' } },
         },
       });
-      console.error(`[es] list_indices locations search ok (${Date.now() - t1}ms)`);
       const filesIndexedAgg = fileCountResponse.aggregations as { filesIndexed?: { value?: number } } | undefined;
       const filesIndexed = filesIndexedAgg?.filesIndexed?.value ?? 0;
 
-      const t2 = Date.now();
-      console.error(`[es] list_indices agg search start index=${alias}`);
       const searchResponse = await client.search<unknown, Omit<Aggregations, 'filesIndexed'>>({
         index: alias,
         ...aggregationQuery,
       });
-      console.error(`[es] list_indices agg search ok (${Date.now() - t2}ms)`);
 
       const aggregations = searchResponse.aggregations;
 

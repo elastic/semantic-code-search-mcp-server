@@ -69,6 +69,7 @@ export function buildIntrospectionVerifier(
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: params.toString(),
+        signal: AbortSignal.timeout(10_000), // 10 s: mirrors discovery fetch timeout
       });
 
       if (!res.ok) {
@@ -130,7 +131,7 @@ export function buildJwksVerifier(
       let payload: Awaited<ReturnType<typeof jwtVerify>>['payload'];
       try {
         // Do not pass `audience` to jwtVerify — Okta (and MCP-compliant clients) set
-        // `aud` to the resource server URL (MCP_SERVER_URL), not the issuer URL.
+        // `aud` to the resource server URL (SCS_MCP_SERVER_URL), not the issuer URL.
         // We validate the audience claim manually below using checkResourceAllowed.
         ({ payload } = await jwtVerify(token, jwks, {
           issuer,
@@ -202,7 +203,7 @@ export async function setupOAuth(app: express.Application, config: OAuthConfig, 
   if (useIntrospection) {
     if (!discovery.introspection_endpoint) {
       throw new Error(
-        `MCP_OAUTH_CLIENT_ID and MCP_OAUTH_CLIENT_SECRET are set but the OIDC provider at "${issuer}" ` +
+        `SCS_MCP_OAUTH_CLIENT_ID and SCS_MCP_OAUTH_CLIENT_SECRET are set but the OIDC provider at "${issuer}" ` +
           `does not expose an introspection_endpoint in its discovery document. ` +
           `Either configure your provider to expose introspection, or remove the client credentials to use JWKS validation instead.`
       );

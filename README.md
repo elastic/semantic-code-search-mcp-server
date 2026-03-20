@@ -191,7 +191,7 @@ The MCP server provides the following tools:
 | `symbol_analysis` | Analyzes a symbol and returns a report of its definitions, call sites, and references. This is useful for understanding the role of a symbol in the codebase. |
 | `read_file_from_chunks` | Reads the content of a file from the index, providing a reconstructed view based on the most important indexed chunks. |
 | `document_symbols` | Analyzes a file to identify the key symbols that would most benefit from documentation. This is useful for automating the process of improving the semantic quality of a codebase. |
-| `auth_status` | Returns your current OAuth authentication status: client ID, granted scopes, and token expiry. Only available when `MCP_OAUTH_ENABLED=true`. Never includes the token value. |
+| `auth_status` | Returns your current OAuth authentication status: client ID, granted scopes, and token expiry. Only available when `SCS_MCP_OAUTH_ENABLED=true`. Never includes the token value. |
 
 **Note:** All of the tools accept an optional `index` parameter that allows you to override the `ELASTICSEARCH_INDEX` for a single query.
 
@@ -212,24 +212,24 @@ The HTTP server supports OAuth 2.0 bearer token authentication. When enabled, MC
 The server validates JWTs locally using the provider's public JWKS endpoint discovered from the issuer's OIDC configuration.
 
 ```bash
-MCP_OAUTH_ENABLED=true
-MCP_OAUTH_ISSUER=https://your-okta.okta.com/oauth2/default
-MCP_SERVER_URL=https://your-server.example.com     # must be the server's public URL
+SCS_MCP_OAUTH_ENABLED=true
+SCS_MCP_OAUTH_ISSUER=https://your-okta.okta.com/oauth2/default
+SCS_MCP_SERVER_URL=https://your-server.example.com     # must be the server's public URL
 # Optional:
-MCP_OAUTH_AUDIENCE=api://default                   # for Okta non-URL audience strings
-MCP_OAUTH_REQUIRED_SCOPES=openid                   # space-separated; minimum "openid" for Okta
+SCS_MCP_OAUTH_AUDIENCE=api://default                   # for Okta non-URL audience strings
+SCS_MCP_OAUTH_REQUIRED_SCOPES=openid                   # space-separated; minimum "openid" for Okta
 ```
 
 ### Token introspection (opt-in — requires client credentials)
 
-Activated when both `MCP_OAUTH_CLIENT_ID` and `MCP_OAUTH_CLIENT_SECRET` are set. The server calls the provider's [RFC 7662](https://www.rfc-editor.org/rfc/rfc7662) introspection endpoint on every request. Use this when the provider issues opaque (non-JWT) tokens, or when real-time revocation checking is required.
+Activated when both `SCS_MCP_OAUTH_CLIENT_ID` and `SCS_MCP_OAUTH_CLIENT_SECRET` are set. The server calls the provider's [RFC 7662](https://www.rfc-editor.org/rfc/rfc7662) introspection endpoint on every request. Use this when the provider issues opaque (non-JWT) tokens, or when real-time revocation checking is required.
 
 ```bash
-MCP_OAUTH_ENABLED=true
-MCP_OAUTH_ISSUER=https://your-keycloak.com/realms/myrealm
-MCP_OAUTH_CLIENT_ID=my-resource-server
-MCP_OAUTH_CLIENT_SECRET=super-secret
-MCP_SERVER_URL=https://your-server.example.com
+SCS_MCP_OAUTH_ENABLED=true
+SCS_MCP_OAUTH_ISSUER=https://your-keycloak.com/realms/myrealm
+SCS_MCP_OAUTH_CLIENT_ID=my-resource-server
+SCS_MCP_OAUTH_CLIENT_SECRET=super-secret
+SCS_MCP_SERVER_URL=https://your-server.example.com
 ```
 
 ### Docker (HTTP mode with OAuth)
@@ -237,29 +237,29 @@ MCP_SERVER_URL=https://your-server.example.com
 ```bash
 docker run --rm -p 3000:3000 \
   -e ELASTICSEARCH_ENDPOINT=https://... \
-  -e MCP_OAUTH_ENABLED=true \
-  -e MCP_OAUTH_ISSUER=https://your-okta.okta.com/oauth2/default \
-  -e MCP_SERVER_URL=https://your-server.example.com \
-  -e MCP_OAUTH_REQUIRED_SCOPES=openid \
+  -e SCS_MCP_OAUTH_ENABLED=true \
+  -e SCS_MCP_OAUTH_ISSUER=https://your-okta.okta.com/oauth2/default \
+  -e SCS_MCP_SERVER_URL=https://your-server.example.com \
+  -e SCS_MCP_OAUTH_REQUIRED_SCOPES=openid \
   simianhacker/semantic-code-search-mcp-server
 ```
 
 ### Required scopes
 
-`MCP_OAUTH_REQUIRED_SCOPES` controls which scopes the server advertises and requires on every token. The minimum recommended value for Okta is `openid`. Setting it to an empty string causes Okta to reject the authorization request with a "no scopes configured" error.
+`SCS_MCP_OAUTH_REQUIRED_SCOPES` controls which scopes the server advertises and requires on every token. The minimum recommended value for Okta is `openid`. Setting it to an empty string causes Okta to reject the authorization request with a "no scopes configured" error.
 
 Note: scopes like `offline_access` and `email` work with Okta and the major IDEs but are not guaranteed by any standard. Avoid them if you need M2M (client credentials) access.
 
 ### Local development without OAuth
 
-When `MCP_SERVER_URL` is not set (or points to localhost), the server binds to `127.0.0.1` only. Set `MCP_SERVER_URL` to a non-localhost URL to bind to all interfaces (required for Docker containers and reverse proxy deployments).
+When `SCS_MCP_SERVER_URL` is not set (or points to localhost), the server binds to `127.0.0.1` only. Set `SCS_MCP_SERVER_URL` to a non-localhost URL to bind to all interfaces (required for Docker containers and reverse proxy deployments).
 
 ### Restricting access to specific OAuth clients
 
 By default, any token issued by the configured authorization server is accepted. To restrict access to a specific app:
 
 ```bash
-MCP_OAUTH_ALLOWED_CLIENT_IDS=0oa1abc123def456gh78  # space-separated for multiple IDs
+SCS_MCP_OAUTH_ALLOWED_CLIENT_IDS=0oa1abc123def456gh78  # space-separated for multiple IDs
 ```
 
 This is recommended when multiple OAuth apps share the same authorization server (common in Okta). Without it, tokens from any app in the tenant that targets the same audience will be accepted. The server checks the `client_id`, `azp`, or `cid` (Okta-specific) claim in the JWT, whichever is present.
@@ -287,11 +287,11 @@ Configuration is managed via environment variables in a `.env` file.
 | `ELASTICSEARCH_CLOUD_ID` | The Cloud ID for your Elastic Cloud instance. | |
 | `ELASTICSEARCH_API_KEY` | An API key for Elasticsearch authentication. | |
 | `ELASTICSEARCH_INDEX` | The name of the Elasticsearch index to use. | `semantic-code-search` |
-| `MCP_OAUTH_ENABLED` | Enable OAuth 2.0 bearer token authentication (HTTP mode only). | `false` |
-| `MCP_OAUTH_ISSUER` | OIDC issuer URL. Required when `MCP_OAUTH_ENABLED=true`. | |
-| `MCP_OAUTH_AUDIENCE` | Expected `aud` claim override. Use for Okta non-URL audiences (e.g. `api://default`). | |
-| `MCP_OAUTH_REQUIRED_SCOPES` | Space-separated scopes the server requires on every token. Minimum `openid` for Okta. | |
-| `MCP_OAUTH_ALLOWED_CLIENT_IDS` | Space-separated allowlist of OAuth client IDs. Empty = any client from the issuer. | |
-| `MCP_OAUTH_CLIENT_ID` | Client ID for token introspection (opt-in). Requires `MCP_OAUTH_CLIENT_SECRET`. | |
-| `MCP_OAUTH_CLIENT_SECRET` | Client secret for token introspection (opt-in). | |
-| `MCP_SERVER_URL` | Public URL of the server. Required for OAuth and non-localhost deployments. | |
+| `SCS_MCP_OAUTH_ENABLED` | Enable OAuth 2.0 bearer token authentication (HTTP mode only). | `false` |
+| `SCS_MCP_OAUTH_ISSUER` | OIDC issuer URL. Required when `SCS_MCP_OAUTH_ENABLED=true`. | |
+| `SCS_MCP_OAUTH_AUDIENCE` | Expected `aud` claim override. Use for Okta non-URL audiences (e.g. `api://default`). | |
+| `SCS_MCP_OAUTH_REQUIRED_SCOPES` | Space-separated scopes the server requires on every token. Minimum `openid` for Okta. | |
+| `SCS_MCP_OAUTH_ALLOWED_CLIENT_IDS` | Space-separated allowlist of OAuth client IDs. Empty = any client from the issuer. | |
+| `SCS_MCP_OAUTH_CLIENT_ID` | Client ID for token introspection (opt-in). Requires `SCS_MCP_OAUTH_CLIENT_SECRET`. | |
+| `SCS_MCP_OAUTH_CLIENT_SECRET` | Client secret for token introspection (opt-in). | |
+| `SCS_MCP_SERVER_URL` | Public URL of the server. Required for OAuth and non-localhost deployments. | |

@@ -58,7 +58,7 @@ export class McpServer {
       try {
         return await fn(args, extra);
       } catch (err) {
-        console.error(`[tool] ${name} error: ${err}`);
+        console.error(`[tool] ${name} error: ${err instanceof Error ? err.stack : JSON.stringify(err)}`);
         throw err;
       }
     };
@@ -150,7 +150,7 @@ export class McpServer {
    * session map, no SSE connections, no sticky sessions required on the load
    * balancer.
    *
-   * When MCP_OAUTH_ENABLED=true, the server enforces OAuth 2.1 Bearer token
+   * When SCS_MCP_OAUTH_ENABLED=true, the server enforces OAuth 2.1 Bearer token
    * authentication on all /mcp routes and exposes the standard
    * /.well-known/oauth-protected-resource metadata endpoint (RFC9728).
    *
@@ -190,7 +190,7 @@ export class McpServer {
     if (oauthConfig.enabled) {
       if (!oauthConfig.issuer) {
         throw new Error(
-          'MCP_OAUTH_ISSUER is required when MCP_OAUTH_ENABLED=true. ' +
+          'SCS_MCP_OAUTH_ISSUER is required when SCS_MCP_OAUTH_ENABLED=true. ' +
             'Set it to your OIDC provider issuer URL, e.g. https://dev-xxx.okta.com/oauth2/default'
         );
       }
@@ -216,7 +216,7 @@ export class McpServer {
         await sdkServer.connect(transport);
         await transport.handleRequest(req, res, req.body);
       } catch (err) {
-        console.error(`[http] POST /mcp error: ${err}`);
+        console.error(`[http] POST /mcp error: ${err instanceof Error ? err.stack : JSON.stringify(err)}`);
         if (!res.headersSent) {
           res.status(500).json({
             jsonrpc: '2.0',
@@ -240,7 +240,7 @@ export class McpServer {
 
     // MCP spec (2025-03-26), Transports Security Warning: when running locally,
     // servers SHOULD bind only to 127.0.0.1, not 0.0.0.0, to reduce the attack
-    // surface. When MCP_SERVER_URL is set to a non-localhost URL (i.e. deployed
+    // surface. When SCS_MCP_SERVER_URL is set to a non-localhost URL (i.e. deployed
     // in a container or behind a reverse proxy) we bind to all interfaces so the
     // container's network stack can reach us.
     const isLocal =
