@@ -6,6 +6,7 @@
  * server in stdio or HTTP mode, and then creates and starts the server.
  */
 import { McpServer } from './server';
+import { oauthConfig } from '../config';
 
 const serverType = process.argv[2] || 'stdio';
 
@@ -15,7 +16,7 @@ if (serverType === 'stdio') {
   server.start();
 } else if (serverType === 'http') {
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-  server.startHttp(port);
+  server.startHttp(port, oauthConfig.serverUrl);
 } else {
   console.error(`Unknown server type: ${serverType}`);
   process.exit(1);
